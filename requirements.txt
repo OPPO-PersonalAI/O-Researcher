@@ -1,0 +1,11 @@
+# Web Framework
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# HTTP Clients
+httpx>=0.24.0
+requests>=2.31.0
+
+# Environment Configuration
+python-dotenv>=1.0.0
+

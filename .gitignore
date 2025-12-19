@@ -1,0 +1,19 @@
+# 日志文件
+server/logs/
+
+# PID 文件
+server/pids/
+
+# cache文件
+server/cache/
+
+# Python
+server/__pycache__/
+*.py[cod]
+*.pyo
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
