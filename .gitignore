@@ -1,8 +1,10 @@
 # 日志文件
 server/logs/
+deploy/logs/
 
 # PID 文件
 server/pids/
+deploy/pids/
 
 # cache文件
 server/cache/
