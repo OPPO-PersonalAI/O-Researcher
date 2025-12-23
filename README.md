@@ -70,16 +70,19 @@ O-Researcher/
 
 ## 1. Install Dependencies
 
+First, install the required dependencies by executing the command below to install packages listed in requirements.txt:
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/O-Researcher.git
-cd O-Researcher
-
 # Install Python dependencies
 pip install -r requirements.txt
 ```
 
-## 2. Configure Environment
+## 2. Model Download
+You can directly download the model by following the links below.
+| Model | Download Links | Model Size | Context Length |
+| :-----------------: | :-----------------------------------------: | :----------: | :--------------: |
+| O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl) | 32B | 128K |
+
+## 3. Configure Environment
 
 ```bash
 # Copy the template and fill in your values
@@ -101,7 +104,7 @@ vim .env
 | `MODEL_PATH` | Path to your model | `/path/to/model` |
 | `MODEL_NAME` | Model name | `O-Researcher-32B` |
 
-## 3. Start Tool Servers
+## 4. Start Tool Servers
 
 ```bash
 # Start all tool servers
@@ -121,7 +124,7 @@ bash server/start_servers.sh stop
 | **WebSearch** | `WEBSEARCH_PORT` | Multi-API Google search with intelligent caching |
 | **CrawlPage** | `CRAWL_PAGE_PORT` | Concurrent page crawling with AI summarization |
 
-## 4. Deploy Model Server
+## 5. Deploy Model Server
 
 Deploy the model using vLLM for high-performance inference:
 
@@ -145,19 +148,19 @@ bash deploy/deploy.sh stop
 | `DEPLOY_MAX_MODEL_LEN` | Maximum model length | `131072` |
 | `DEPLOY_WAIT_TIMEOUT` | Startup timeout (seconds) | `120` |
 
-## 5. Run Inference
+## 6. Run Inference
 
 **Set Required Environment Variables:**
 
 ```bash
 # Model Configuration
-export MODEL_NAME="O-Researcher-32B"
+export MODEL_NAME="O-Researcher-72B-rl"
 export MODEL_URL="http://localhost:8000/v1"
 export MODEL_PATH="/path/to/your/model"
 
 # Tool Server URLs
-export WEBSEARCH_URL="http://localhost:20002/search"
-export CRAWL_PAGE_URL="http://localhost:20001/crawl_page"
+export WEBSEARCH_URL="http://localhost:20001/search"
+export CRAWL_PAGE_URL="http://localhost:20002/crawl_page"
 ```
 
 **Run Inference:**
@@ -167,12 +170,12 @@ cd infer
 
 # Basic inference
 python infer.py \
-    --input_file ../data/example.json \
+    --input_file ../data/example.jsonl \
     --output_file ../results/output.jsonl
 
 # With custom parameters
 python infer.py \
-    --input_file ../data/example.json \
+    --input_file ../data/example.jsonl \
     --output_file ../results/output.jsonl \
     --temperature 1.0 \
     --top_p 0.9 \

@@ -1,4 +1,19 @@
-
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. Personal AI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
 import re
 import json
 import tiktoken
@@ -181,6 +196,7 @@ def write_jsonl(
         write_jsonl([{"key": "value"}], "data.jsonl")
     """
     try:
+        os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
         mode = 'a' if append else 'w'
         with open(file_path, mode, encoding='utf-8') as file:
             for item in data:
@@ -246,6 +262,7 @@ def write_json(
         write_json({"key": "value"}, "data.json")
     """
     try:
+        os.makedirs(os.path.dirname(file_path) or '.', exist_ok=True)
         with open(file_path, "w", encoding='utf-8') as file:
             json.dump(
                 data, 
