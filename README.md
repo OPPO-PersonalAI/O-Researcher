@@ -15,7 +15,8 @@
 
 <br>
 
-O-Researcher is a **high-performance research agent framework** that combines large language models with powerful tool capabilities to answer complex questions. By integrating web search, page crawling, and intelligent summarization, it delivers accurate and traceable research results.
+
+This is the official repository for our paper "O-Researcher: An Open Ended Deep Research Model via Multi-Agent Distillation and Agentic RL".By integrating web search, page crawling, and intelligent summarization, it delivers accurate and traceable research results.
 
 <div align="center">
   <img src="./assets/architecture.png" width="90%" height="auto" alt="O-Researcher Architecture"/>
@@ -25,7 +26,7 @@ O-Researcher is a **high-performance research agent framework** that combines la
 
 # 📋 Overview
 
-O-Researcher provides a **unified framework** for tool-augmented reasoning, featuring:
+O-Researcher presents a unified framework that bridges the gap between closed-source and open-source LLMs through automated multi-agent data synthesis and a two-stage training strategy, achieving state-of-the-art performance on deep research benchmarks while eliminating dependency on proprietary data.
 
 ## Key Features
 
@@ -167,20 +168,7 @@ export CRAWL_PAGE_URL="http://localhost:20002/crawl_page"
 
 ```bash
 cd infer
-
-# Basic inference
-python infer.py \
-    --input_file ../data/example.jsonl \
-    --output_file ../results/output.jsonl
-
-# With custom parameters
-python infer.py \
-    --input_file ../data/example.jsonl \
-    --output_file ../results/output.jsonl \
-    --temperature 1.0 \
-    --top_p 0.9 \
-    --parallel 30 \
-    --retry_attempt 100
+python infer.py --input_file ../data/example.jsonl --output_file ../results/output.jsonl
 ```
 
 **Quick Start with Example Script:**
