@@ -221,7 +221,7 @@ elif [[ "$cmd" == "stop" ]]; then
     # 等待进程完全终止
     echo ""
     echo "Waiting for processes to terminate..."
-    sleep 5
+    sleep 15
     
     # Verify
     echo ""
