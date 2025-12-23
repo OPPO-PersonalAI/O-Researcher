@@ -11,6 +11,7 @@ server/cache/
 
 # Python
 server/__pycache__/
+infer/__pycache__/
 *.py[cod]
 *.pyo
 .env

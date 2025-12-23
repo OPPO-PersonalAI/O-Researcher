@@ -64,31 +64,40 @@ get_port_pids() {
     echo "$pids"
 }
 
-# Stop vLLM process by port - precise matching
+# Stop process by port
 stop_by_port() {
     local port=$1
-    echo "Stopping vLLM on port $port..."
+    echo "Stopping process on port $port..."
     
-    # Find vLLM processes matching --port
+    # Method 1: Find vLLM processes by command line
     PIDS=$(ps -ef | grep "vllm" | grep -E "\-\-port[= ]$port( |$)" | grep -v grep | awk '{print $2}')
-    
-    if [ -z "$PIDS" ]; then
-        echo "  No vLLM process on port $port"
-        return
+    if [ -n "$PIDS" ]; then
+        echo "  Found vLLM PIDs: $PIDS"
+        kill $PIDS 2>/dev/null
+        sleep 2
+        kill -9 $PIDS 2>/dev/null
     fi
     
-    echo "  Found PIDs: $PIDS, sending SIGTERM..."
-    kill $PIDS 2>/dev/null
-    sleep 3
-    
-    # Force kill remaining
-    REMAINING=$(ps -ef | grep "vllm" | grep -E "\-\-port[= ]$port( |$)" | grep -v grep | awk '{print $2}')
-    if [ -n "$REMAINING" ]; then
-        echo "  Force killing: $REMAINING"
-        kill -9 $REMAINING 2>/dev/null
+    # Method 2: Kill by port directly (fuser)
+    if command -v fuser &>/dev/null; then
+        fuser -k ${port}/tcp 2>/dev/null && echo "  Killed via fuser"
         sleep 1
     fi
-    echo "  Port $port cleaned ✓"
+    
+    # Method 3: Get PIDs from port and kill
+    PORT_PIDS=$(get_port_pids "$port")
+    if [ -n "$PORT_PIDS" ]; then
+        echo "  Found port PIDs: $PORT_PIDS"
+        echo "$PORT_PIDS" | xargs kill -9 2>/dev/null
+        sleep 1
+    fi
+    
+    # Verify
+    if check_port_listening "$port"; then
+        echo "  Warning: Port $port still in use"
+    else
+        echo "  Port $port cleaned ✓"
+    fi
 }
 
 check_instance_status() {
@@ -140,11 +149,8 @@ if [[ "$cmd" == "start" ]]; then
                 --served-model-name ${base_modelname} \
                 --max-model-len ${max_model_len} \
                 --max-seq-len ${max_model_len} \
-                --rope-scaling '{\"rope_type\":\"yarn\",\"factor\":4.0,\"original_max_position_embeddings\":32768}' \
                 --tensor-parallel-size ${GPUS_PER_INSTANCE} \
-                --gpu-memory-utilization 0.9 \
-                --max-num-seqs 32 \
-                --enable-prefix-caching \
+                --gpu-memory-utilization 0.8 \
                 --trust-remote-code \
                 --uvicorn-log-level debug \
                 --host 0.0.0.0 \
@@ -212,6 +218,11 @@ elif [[ "$cmd" == "stop" ]]; then
         rm -f "$PID_DIR/${base_modelname}_inst${i}.pid"
     done
     
+    # 等待进程完全终止
+    echo ""
+    echo "Waiting for processes to terminate..."
+    sleep 5
+    
     # Verify
     echo ""
     echo "Verification:"
@@ -219,13 +230,24 @@ elif [[ "$cmd" == "stop" ]]; then
     for ((i=0; i<INSTANCES; i++)); do
         port=$((base_port + i))
         if check_port_listening "$port"; then
-            echo "  Warning: Port $port still in use"
-            has_remaining=1
+            echo "  Warning: Port $port still in use, retrying..."
+            # 再次尝试清理
+            fuser -k -9 ${port}/tcp 2>/dev/null
+            sleep 2
+            if check_port_listening "$port"; then
+                echo "  Port $port still in use after retry"
+                has_remaining=1
+            else
+                echo "  Port $port released ✓"
+            fi
+        else
+            echo "  Port $port released ✓"
         fi
     done
     
-    if [ $has_remaining -eq 0 ]; then
-        echo "  All ports released ✓"
+    if [ $has_remaining -eq 1 ]; then
+        echo ""
+        echo "Some ports still in use. Try: lsof -i:<port>"
     fi
     
     # Show GPU status
