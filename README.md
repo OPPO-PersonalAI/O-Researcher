@@ -81,7 +81,10 @@ pip install -r requirements.txt
 You can directly download the model by following the links below.
 | Model | Download Links | Model Size | Context Length |
 | :-----------------: | :-----------------------------------------: | :----------: | :--------------: |
-| O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl) | 32B | 128K |
+| O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl) | 72B | 128K |
+| O-Researcher-72B-sft | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-sft) | 72B | 128K |
+| O-Researcher-32B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-32B-rl) | 32B | 128K |
+| O-Researcher-32B-sft | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-32B-rl) | 32B | 128K |
 
 ## 3. Configure Environment
 
@@ -103,7 +106,7 @@ vim .env
 | `SERPER_API_KEY` | Serper API Key (multiple keys separated by `\|`) | `key1\|key2` |
 | `SERPAPI_BASE_URL` | Serper API URL | `https://google.serper.dev/search` |
 | `MODEL_PATH` | Path to your model | `/path/to/model` |
-| `MODEL_NAME` | Model name | `O-Researcher-32B` |
+| `MODEL_NAME` | Model name | `O-Researcher-72B-rl` |
 
 ## 4. Start Tool Servers
 
@@ -144,10 +147,24 @@ bash deploy/deploy.sh stop
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `MODEL_BASE_PORT` | Base port for model service | `9095` |
 | `DEPLOY_INSTANCES` | Number of instances | `1` |
-| `DEPLOY_GPUS_PER_INSTANCE` | GPUs per instance | `2` |
+| `DEPLOY_GPUS_PER_INSTANCE` | GPUs per instance | `4` |
 | `DEPLOY_MAX_MODEL_LEN` | Maximum model length | `131072` |
-| `DEPLOY_WAIT_TIMEOUT` | Startup timeout (seconds) | `120` |
+| `DEPLOY_WAIT_TIMEOUT` | Startup timeout (seconds) | `300` |
+
+**Multi-Instance Deployment:**
+
+When deploying multiple instances (`DEPLOY_INSTANCES > 1`), ports are assigned incrementally:
+- Instance 1: `MODEL_BASE_PORT` (e.g., 9095)
+- Instance 2: `MODEL_BASE_PORT + 1` (e.g., 9096)
+- ...
+
+Remember to update `MODEL_URL` accordingly:
+```bash
+# For 2 instances
+export MODEL_URL="http://localhost:9095/v1|http://localhost:9096/v1"
+```
 
 ## 6. Run Inference
 
@@ -156,12 +173,16 @@ bash deploy/deploy.sh stop
 ```bash
 # Model Configuration
 export MODEL_NAME="O-Researcher-72B-rl"
-export MODEL_URL="http://localhost:8000/v1"
 export MODEL_PATH="/path/to/your/model"
 
+# Model URL (单实例)
+export MODEL_URL="http://localhost:9095/v1"
+# Model URL (多实例，用 | 分隔，自动轮询负载均衡)
+# export MODEL_URL="http://localhost:9095/v1|http://localhost:9096/v1"
+
 # Tool Server URLs
-export WEBSEARCH_URL="http://localhost:20001/search"
-export CRAWL_PAGE_URL="http://localhost:20002/crawl_page"
+export WEBSEARCH_URL="http://localhost:20002/search"
+export CRAWL_PAGE_URL="http://localhost:20001/crawl_page"
 ```
 
 **Run Inference:**
@@ -194,8 +215,8 @@ bash example_infer.sh
 | `--top_p` | Top-p sampling | `0.9` |
 | `--max_tokens` | Max tokens per generation | `4096` |
 | `--total_tokens` | Max total tokens | `81920` |
-| `--parallel` | Number of parallel processes | `30` |
-| `--retry_attempt` | Max retry attempts | `100` |
+| `--max_steps` | Max inference steps per question | `100` |
+| `--parallel` | Number of parallel workers | `1` |
 | `--round` | Number of inference rounds | `1` |
 
 ## Example Usage
@@ -212,7 +233,14 @@ python infer.py \
 python infer.py \
     --input_file ../data/example.json \
     --output_file ../results/output.jsonl \
-    --parallel 10 \
+    --parallel 30 \
+    --max_steps 100
+
+# Multiple rounds inference
+python infer.py \
+    --input_file ../data/example.json \
+    --output_file ../results/output.jsonl \
+    --round 3
 ```
 
 ---
