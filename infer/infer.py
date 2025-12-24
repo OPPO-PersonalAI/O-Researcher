@@ -551,26 +551,63 @@ def main():
     logging.info(f"Answer key: {args.a_key}")
     logging.info("=" * 50)
 
-    # Process dataset
+    # Process dataset with multiple rounds
     start_time = time.time()
-    stats = {}
-    try:
-        dataset_path, stats = process_queries(
-            args.input_file,
-            args.output_file,
-            args.q_key,
-            args.a_key,
-            **INFER_KWARGS,
-        )
-    except Exception as e:
-        logging.error(f"Error occurred while processing dataset: {str(e)}")
+    total_rounds = INFER_KWARGS.get("round", 1)
+    all_stats = []
+    all_outfiles = []
+    
+    for current_round in range(total_rounds):
+        if total_rounds > 1:
+            # 多轮时，为每轮生成不同的输出文件名
+            current_outfile = args.output_file.replace(".jsonl", f".round_{current_round + 1}.jsonl")
+            logging.info(f"\n{'=' * 50}")
+            logging.info(f"Round {current_round + 1}/{total_rounds}")
+            logging.info(f"Output file: {current_outfile}")
+            logging.info(f"{'=' * 50}")
+        else:
+            current_outfile = args.output_file
+        
+        all_outfiles.append(current_outfile)
+        
+        try:
+            dataset_path, stats = process_queries(
+                args.input_file,
+                current_outfile,
+                args.q_key,
+                args.a_key,
+                **INFER_KWARGS,
+            )
+            all_stats.append({"round": current_round + 1, "outfile": current_outfile, **stats})
+        except Exception as e:
+            logging.error(f"Error in round {current_round + 1}: {str(e)}")
+            all_stats.append({"round": current_round + 1, "outfile": current_outfile, "error": str(e)})
 
     total_cost_time = time.time() - start_time
+    logging.info(f"\n{'=' * 50}")
+    logging.info(f"All rounds completed!")
     logging.info(f"Total time: {total_cost_time:.2f} seconds")
+    
+    # 汇总统计
+    if total_rounds > 1:
+        logging.info(f"Output files:")
+        for outfile in all_outfiles:
+            logging.info(f"  - {outfile}")
+        
+        total_success = sum(s.get("success", 0) for s in all_stats)
+        total_failed = sum(s.get("failed", 0) for s in all_stats)
+        logging.info(f"Total success: {total_success}, Total failed: {total_failed}")
 
     # Save statistics
     stats_file = args.output_file.replace(".jsonl", ".param_stats.json")
-    write_json({**SHOW_KWARGS, **stats, "total_time": total_cost_time}, stats_file)
+    final_stats = {
+        **SHOW_KWARGS,
+        "total_rounds": total_rounds,
+        "round_stats": all_stats,
+        "output_files": all_outfiles,
+        "total_time": total_cost_time
+    }
+    write_json(final_stats, stats_file)
     logging.info(f"Stats saved to: {stats_file}")
 
 if __name__ == "__main__":
