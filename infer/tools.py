@@ -54,7 +54,7 @@ def WebSearchTool(web_search_url, task, query, history, topk=10):
     return result
 
 
-def CrawlPageTool(crawl_page_url, task, urls, history, save_only_one_url):
+def CrawlPageTool(crawl_page_url, task, urls, history):
     if isinstance(urls, str):
         urls = urls.split("|")
     # think_content

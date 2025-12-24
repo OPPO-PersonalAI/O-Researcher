@@ -65,11 +65,20 @@ MODEL_URL = get_required_env("MODEL_URL")
 WEBSEARCH_URL = get_required_env("WEBSEARCH_URL")
 CRAWL_PAGE_URL = get_required_env("CRAWL_PAGE_URL")
 
-# Create configurations
+# Create configurations - support multiple URLs separated by |
+url_list = [url.strip() for url in MODEL_URL.split("|") if url.strip()]
 URL_CONFIG = {
-    "config": [MODEL_URL],
+    "config": url_list,
     "pointer": 0,
+    "lock": Lock(),  # 线程安全的轮询
 }
+
+def get_next_url():
+    """轮询获取下一个 URL（线程安全）"""
+    with URL_CONFIG["lock"]:
+        url = URL_CONFIG["config"][URL_CONFIG["pointer"] % len(URL_CONFIG["config"])]
+        URL_CONFIG["pointer"] += 1
+        return url
 
 KEY = "empty"
 SYSTEM_PROMPT = sys_prompt
@@ -119,8 +128,8 @@ def parse_args_and_create_config():
                         help="Maximum total tokens for generation")
 
     # Tool Configuration
-    parser.add_argument("--retry_attempt", type=int, default=100,
-                        help="Maximum retry attempts")
+    parser.add_argument("--max_steps", type=int, default=100,
+                        help="Maximum inference steps per question")
 
     # Parallel Processing
     parser.add_argument("--parallel", type=int, default=1,
@@ -129,12 +138,6 @@ def parse_args_and_create_config():
     # Round Configuration
     parser.add_argument("--round", type=int, default=1,
                         help="Total number of inference rounds")
-
-    # Tool Mode
-    parser.add_argument("--remote_tool", type=bool, default=True,
-                        help="Use remote tool services")
-    parser.add_argument("--save_only_one_url", type=bool, default=False,
-                        help="Save only one URL per search")
 
     # Data Configuration
     parser.add_argument("--input_file", type=str, required=True,
@@ -157,12 +160,10 @@ def parse_args_and_create_config():
         "frequency_penalty": args.frequency_penalty,
         "max_tokens": args.max_tokens,
         "total_tokens": args.total_tokens,
-        "retry_attempt": args.retry_attempt,
+        "max_steps": args.max_steps,
         "parallel": args.parallel,
-        "save_only_one_url": args.save_only_one_url,
         "web_search_config": web_search_config,
         "crawl_page_config": crawl_page_config,
-        "remote_tool": args.remote_tool,
         "round": args.round,
     }
 
@@ -210,8 +211,7 @@ def get_search_results_with_format(task, response, history, **kwargs):
                 crawl_page_url=cur_crawl_page_config[0],
                 task=task,
                 urls=urls,  # 传递URL列表
-                history=history,
-                save_only_one_url=kwargs.get("save_only_one_url", "False")
+                history=history
             )
             search_results = crawl_results
 
@@ -267,12 +267,12 @@ def process_single_data(query, fixed_url, **kwargs):
     system_prompt = SYSTEM_PROMPT.strip()
     current_answer = ""
     
-    retry_attempts = kwargs.get("retry_attempt", 100)
+    max_steps = kwargs.get("max_steps", 100)
     result_list = []
-    attempt = 0
+    step = 0
     error_count = 0
 
-    while attempt < retry_attempts and error_count < 10:
+    while step < max_steps and error_count < 10:
         step_list = [elem["type"] for elem in result_list]
         # 检查是否有连续15个重复步骤
         if len(result_list) >= 15:
@@ -285,27 +285,27 @@ def process_single_data(query, fixed_url, **kwargs):
         item_type, content = api_client(system_prompt, query, current_answer, fixed_url, KEY, MODEL, **kwargs)
         logging.info(f"调用模型完毕: {MODEL}")
         content_wo_think = content.split("</think>")[-1].strip()
-        logging.info(f"step {attempt+1}: {item_type}")
+        logging.info(f"Step {step+1}/{max_steps}: {item_type}")
         # if item_type == "error" or " budget " in content.lower() or " 404 " in content.lower() or " 402 " in content.lower():
         if item_type == "error" or content is None:
             error_count += 1
             continue
         elif content_wo_think in "".join(current_answer):
             content = f"|<BEGIN_OF_DUPLICATE_CONTENT>|{content}|<END_OF_DUPLICATE_CONTENT>|You have previsouly output the same content. Please try to proceed further and think differently with no more duplications."
-            logging.info(f"found duplicate step: {item_type} | {content_wo_think}")
+            logging.info(f"Found duplicate step: {item_type} | {content_wo_think}")
             result_list.append({
                 "type": item_type,
                 "content": content
             })
             current_answer += content
-            attempt += 1
+            step += 1
         elif item_type == "answer":
             result_list.append({
                 "type": item_type,
                 "content": content
             })
             current_answer += content
-            attempt += 1
+            step += 1
             return result_list, None
         elif item_type in ["plan", "reflection", "summary", "double_check"]:
             result_list.append({
@@ -313,14 +313,14 @@ def process_single_data(query, fixed_url, **kwargs):
                 "content": content
             })
             current_answer += content
-            attempt += 1
+            step += 1
         elif item_type == "suggested_answer":
             result_list.append({
                 "type": item_type,
                 "content": content
             })
             current_answer += content
-            attempt += 1
+            step += 1
             return current_answer, result_list, None
         elif item_type in ["web_search", "wiki_search", "crawl_page"]:
             logging.info(f"开始调用工具: {item_type}")
@@ -337,7 +337,7 @@ def process_single_data(query, fixed_url, **kwargs):
                 "content": f"\n\n{content.strip()}\n\n<observation>\n{obs.strip()}\n</observation>"
             })
             current_answer += f"\n\n{content.strip()}\n\n<observation>\n{obs.strip()}\n</observation>"
-            attempt += 1
+            step += 1
     # 直接用suggested_answer作为answer
     suggested_answer_list = [item for item in result_list if item["type"] == "suggested_answer"]
     if suggested_answer_list:
@@ -347,7 +347,7 @@ def process_single_data(query, fixed_url, **kwargs):
         })
         return current_answer, result_list, None
     else:
-        return current_answer, result_list, "超出max_attempts次数，并且没有找到answer/suggested_answer"
+        return current_answer, result_list, f"超出最大步数({max_steps})，未找到 suggested_answer"
 
 
 # 提取最后的答案
@@ -417,9 +417,6 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
 
     # 消费者函数 - 从队列获取任务并处理
     def consumer():
-        fixed_url = URL_CONFIG["config"][URL_CONFIG["pointer"] % len(URL_CONFIG["config"])]
-        URL_CONFIG["pointer"] += 1
-
         nonlocal stats
         while True:
             task = task_queue.get()
@@ -429,6 +426,9 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
             idx, question_data = task
             question = question_data[q_key]
             level = question_data.get('Level', '-1')
+            
+            # 每个 query 轮询选择一个 URL（同一 query 的所有 step 使用同一 URL，保证 kv_cache）
+            fixed_url = get_next_url()
 
             trace = {
                 "question_id": str(idx),
@@ -441,9 +441,10 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
                 "error": None,
                 "elapsed_time_seconds": None,  # 单条推理耗时（秒）
                 "elapsed_time_formatted": None,  # 格式化耗时
+                "model_url": fixed_url,  # 记录使用的实例
             }
 
-            current_answer, result_list, failed_reason = process_single_data(question, fixed_url = fixed_url, **kwargs)
+            current_answer, result_list, failed_reason = process_single_data(question, fixed_url=fixed_url, **kwargs)
 
             # 先设置为None
             clean_data = None

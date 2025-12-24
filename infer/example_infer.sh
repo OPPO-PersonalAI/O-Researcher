@@ -24,54 +24,54 @@ python infer.py \
     --input_file ../data/example.json \
     --output_file ../results/output.jsonl
 
-# =============================================================================
-# Example 2: Custom q_key and a_key
-# =============================================================================
-echo ""
-echo "Example 2: Custom input/output keys"
-python infer.py \
-    --input_file ../data/queries.jsonl \
-    --output_file ../results/output.jsonl \
-    --q_key "prompt" \
-    --a_key "answer"
+# # =============================================================================
+# # Example 2: Custom q_key and a_key
+# # =============================================================================
+# echo ""
+# echo "Example 2: Custom input/output keys"
+# python infer.py \
+#     --input_file ../data/queries.jsonl \
+#     --output_file ../results/output.jsonl \
+#     --q_key "prompt" \
+#     --a_key "answer"
 
-# =============================================================================
-# Example 3: High parallel processing
-# =============================================================================
-echo ""
-echo "Example 3: Parallel processing (30 workers)"
-python infer.py \
-    --input_file ../data/example.json \
-    --output_file ../results/parallel_output.jsonl \
-    --parallel 30
+# # =============================================================================
+# # Example 3: High parallel processing
+# # =============================================================================
+# echo ""
+# echo "Example 3: Parallel processing (30 workers)"
+# python infer.py \
+#     --input_file ../data/example.json \
+#     --output_file ../results/parallel_output.jsonl \
+#     --parallel 30
 
-# =============================================================================
-# Example 4: Multiple rounds
-# =============================================================================
-echo ""
-echo "Example 4: Multiple rounds (3 rounds)"
-python infer.py \
-    --input_file ../data/example.json \
-    --output_file ../results/multi_round.jsonl \
-    --round 3
+# # =============================================================================
+# # Example 4: Multiple rounds
+# # =============================================================================
+# echo ""
+# echo "Example 4: Multiple rounds (3 rounds)"
+# python infer.py \
+#     --input_file ../data/example.json \
+#     --output_file ../results/multi_round.jsonl \
+#     --round 3
 
-# =============================================================================
-# Example 5: Full parameters
-# =============================================================================
-echo ""
-echo "Example 5: Full parameters"
-python infer.py \
-    --input_file ../data/example.json \
-    --output_file ../results/full_output.jsonl \
-    --q_key "question" \
-    --a_key "answer" \
-    --temperature 1.0 \
-    --top_p 0.9 \
-    --max_tokens 4096 \
-    --total_tokens 81920 \
-    --max_steps 100 \
-    --parallel 30 \
-    --round 1
+# # =============================================================================
+# # Example 5: Full parameters
+# # =============================================================================
+# echo ""
+# echo "Example 5: Full parameters"
+# python infer.py \
+#     --input_file ../data/example.json \
+#     --output_file ../results/full_output.jsonl \
+#     --q_key "question" \
+#     --a_key "answer" \
+#     --temperature 1.0 \
+#     --top_p 0.9 \
+#     --max_tokens 4096 \
+#     --total_tokens 81920 \
+#     --max_steps 100 \
+#     --parallel 30 \
+#     --round 1
 
 echo ""
 echo "================================"
