@@ -34,8 +34,7 @@ python infer_main.py \
     --output_file ../results/agentic_output.jsonl \
     --adaptive toolcalling_agent \
     --max_steps_agent 100 \
-    --temperature 0.8 \
-    --web_topk 15
+    --temperature 0.8
 
 echo ""
 

@@ -196,7 +196,6 @@ bash example_infer.sh
 | `--total_tokens` | Max total tokens | `81920` |
 | `--parallel` | Number of parallel processes | `30` |
 | `--retry_attempt` | Max retry attempts | `100` |
-| `--web_topk` | Number of web search results | `10` |
 | `--round` | Number of inference rounds | `1` |
 
 ## Example Usage
@@ -213,8 +212,7 @@ python infer.py \
 python infer.py \
     --input_file ../data/example.json \
     --output_file ../results/output.jsonl \
-    --parallel 50 \
-    --web_topk 15
+    --parallel 10 \
 ```
 
 ---

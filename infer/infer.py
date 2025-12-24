@@ -119,8 +119,6 @@ def parse_args_and_create_config():
                         help="Maximum total tokens for generation")
 
     # Tool Configuration
-    parser.add_argument("--web_topk", type=int, default=10,
-                        help="Number of top web search results to retrieve")
     parser.add_argument("--retry_attempt", type=int, default=100,
                         help="Maximum retry attempts")
 
@@ -159,7 +157,6 @@ def parse_args_and_create_config():
         "frequency_penalty": args.frequency_penalty,
         "max_tokens": args.max_tokens,
         "total_tokens": args.total_tokens,
-        "web_topk": args.web_topk,
         "retry_attempt": args.retry_attempt,
         "parallel": args.parallel,
         "save_only_one_url": args.save_only_one_url,
@@ -181,7 +178,6 @@ def get_search_results_with_format(task, response, history, **kwargs):
         _, tool, parsed_content = extract_specific_tag(response)
         search_results = ""
         remote_tool = kwargs.get("remote_tool", True)
-        web_topk = kwargs.get("web_topk", 10)
         
         # 获取配置信息
         cur_web_search_config = web_search_config["config"][
@@ -482,35 +478,27 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
     # 结果写入函数
     def result_writer():
         nonlocal stats
-        with write_lock:
-            # 先读取已有数据
-            existing_data = []
-            if os.path.exists(outfile):
-                existing_data = read_jsonl(outfile)
+        while True:
+            result_item = result_queue.get()
+            if result_item is None:  # 结束标记
+                break
             
-            # 处理新结果
-            while True:
-                result_item = result_queue.get()
-                if result_item is None:  # 结束标记
-                    break
-                
-                result, trace = result_item
-                # 只有当 prediction 不为 None 时才处理
-                if trace.get("prediction") is not None:
-                    if result == 1:
-                        stats["success"] += 1
-                    else:
-                        stats["failed"] += 1
-                    
-                    # 追加到现有数据
-                    existing_data.append(trace)
-                    # 写入文件
-                    write_jsonl([result], outfile, "a")
+            result, trace = result_item
+            # 只有当 prediction 不为 None 时才处理
+            if trace.get("prediction") is not None:
+                if result is not None:
+                    stats["success"] += 1
                 else:
-                    # prediction 为 None 的情况不计入统计
-                    logging.info(f"跳过写入: prediction 为 None (问题: {trace.get('question')})")
+                    stats["failed"] += 1
                 
-                result_queue.task_done()
+                # 写入文件
+                with write_lock:
+                    write_jsonl([result], outfile, "a")
+            else:
+                # prediction 为 None 的情况不计入统计
+                logging.info(f"跳过写入: prediction 为 None (问题: {trace.get('question')})")
+            
+            result_queue.task_done()
 
     # 创建线程池
     num_workers = kwargs.get("parallel", 4)
