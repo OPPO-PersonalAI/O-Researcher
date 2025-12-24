@@ -44,29 +44,6 @@ O-Researcher presents a unified framework that bridges the gap between closed-so
 
 ---
 
-# 📁 Project Structure
-
-```
-O-Researcher/
-├── server/                     # Tool Server Infrastructure
-│   ├── cache_serper_server.py  # Web Search Server with caching
-│   ├── crawl_page_server.py    # Page Crawler with AI summarization
-│   ├── start_servers.sh        # Server management script
-│   └── test_*.py               # Test scripts
-├── deploy/                     # Model Deployment
-│   └── deploy.sh               # vLLM deployment script
-├── infer/                      # Inference Pipeline
-│   ├── infer.py                # Main inference script
-│   ├── prompts.py              # System prompts
-│   ├── tools.py                # Tool interfaces
-│   ├── utils.py                # Utility functions
-│   └── example_infer.sh        # Example inference script
-├── env_template                # Environment configuration template
-└── requirements.txt            # Python dependencies
-```
-
----
-
 # 🚀 Quick Start
 
 ## 1. Install Dependencies
@@ -81,11 +58,15 @@ pip install -r requirements.txt
 You can directly download the model by following the links below.
 | Model | Download Links | Model Size | Context Length |
 | :-----------------: | :-----------------------------------------: | :----------: | :--------------: |
-| O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl) | 72B | 128K |
-| O-Researcher-72B-sft | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-sft) | 72B | 128K |
-| O-Researcher-32B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-32B-rl) | 32B | 128K |
-| O-Researcher-32B-sft | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-32B-rl) | 32B | 128K |
+| O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl)| 72B | 128K |
 
+**Alternative Download Methods:**
+
+1. **Direct from HuggingFace**: Click the 🤗 HuggingFace link above
+2. **Script Download**: 
+   ```bash
+   cd ./model
+   python download.py
 ## 3. Configure Environment
 
 ```bash
@@ -96,17 +77,26 @@ cp env_template .env
 vim .env
 ```
 
-**Required Environment Variables:**
+**Server Configuration (server/start_servers.sh):**
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |----------|-------------|---------|
 | `SERVER_HOST` | Server listening address | `127.0.0.1` |
 | `CRAWL_PAGE_PORT` | CrawlPage service port | `20001` |
 | `WEBSEARCH_PORT` | WebSearch service port | `20002` |
+| `CRAWL_PAGE_WORKERS` | CrawlPage worker processes | `10` |
+| `WEBSEARCH_WORKERS` | WebSearch worker processes | `10` |
+
+**API Configuration:**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
 | `SERPER_API_KEY` | Serper API Key (multiple keys separated by `\|`) | `key1\|key2` |
 | `SERPAPI_BASE_URL` | Serper API URL | `https://google.serper.dev/search` |
-| `MODEL_PATH` | Path to your model | `/path/to/model` |
-| `MODEL_NAME` | Model name | `O-Researcher-72B-rl` |
+| `SUMMARY_API_URLS` | Summarization API URL (multiple separated by `\|`) | `https://api.openai.com/v1` |
+| `SUMMARY_OPENAI_API_KEY` | OpenAI API Key for summarization | `sk-xxx` |
+| `SUMMARY_MODEL` | Summarization model name | `gpt-4` |
+| `JINA_API_KEY` | Jina API Key (optional) | `jina_xxx` |
 
 ## 4. Start Tool Servers
 
@@ -147,11 +137,23 @@ bash deploy/deploy.sh stop
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `MODEL_PATH` | Path to your model (required) | - |
+| `MODEL_NAME` | Model name (required) | - |
 | `MODEL_BASE_PORT` | Base port for model service | `9095` |
+| `DEPLOY_HOST` | Deployment host address | `0.0.0.0` |
 | `DEPLOY_INSTANCES` | Number of instances | `1` |
-| `DEPLOY_GPUS_PER_INSTANCE` | GPUs per instance | `4` |
+| `DEPLOY_GPUS_PER_INSTANCE` | GPUs per instance | `2` |
 | `DEPLOY_MAX_MODEL_LEN` | Maximum model length | `131072` |
-| `DEPLOY_WAIT_TIMEOUT` | Startup timeout (seconds) | `300` |
+| `DEPLOY_LOG_DIR` | Deployment log directory | `deploy/logs` |
+| `DEPLOY_WAIT_TIMEOUT` | Startup timeout (seconds) | `120` |
+
+**Inference Configuration:**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `MODEL_URL` | Model API URL (multiple separated by `\|` for load balancing) | `http://localhost:9095/v1` |
+| `WEBSEARCH_URL` | WebSearch service URL | `http://localhost:20002/search` |
+| `CRAWL_PAGE_URL` | CrawlPage service URL | `http://localhost:20001/crawl_page` |
 
 **Multi-Instance Deployment:**
 
@@ -168,26 +170,11 @@ export MODEL_URL="http://localhost:9095/v1|http://localhost:9096/v1"
 
 ## 6. Run Inference
 
-**Set Required Environment Variables:**
+Make sure `.env` is properly configured and sourced:
 
 ```bash
-# Model Configuration
-export MODEL_NAME="O-Researcher-72B-rl"
-export MODEL_PATH="/path/to/your/model"
+source .env
 
-# Model URL (单实例)
-export MODEL_URL="http://localhost:9095/v1"
-# Model URL (多实例，用 | 分隔，自动轮询负载均衡)
-# export MODEL_URL="http://localhost:9095/v1|http://localhost:9096/v1"
-
-# Tool Server URLs
-export WEBSEARCH_URL="http://localhost:20002/search"
-export CRAWL_PAGE_URL="http://localhost:20001/crawl_page"
-```
-
-**Run Inference:**
-
-```bash
 cd infer
 python infer.py --input_file ../data/example.jsonl --output_file ../results/output.jsonl
 ```
@@ -196,7 +183,7 @@ python infer.py --input_file ../data/example.jsonl --output_file ../results/outp
 
 ```bash
 cd infer
-bash example_infer.sh
+bash example_infer.sh  # Automatically sources .env
 ```
 
 ---
@@ -227,19 +214,18 @@ python infer.py \
     --input_file ../data/queries.jsonl \
     --output_file ../results/output.jsonl \
     --q_key "prompt" \
-    --a_key "response"
+    --a_key "answer"
 
 # High-performance parallel processing
 python infer.py \
     --input_file ../data/example.json \
-    --output_file ../results/output.jsonl \
-    --parallel 30 \
-    --max_steps 100
+    --output_file ../results/parallel_output.jsonl \
+    --parallel 30
 
 # Multiple rounds inference
 python infer.py \
     --input_file ../data/example.json \
-    --output_file ../results/output.jsonl \
+    --output_file ../results/multi_round.jsonl \
     --round 3
 ```
 
@@ -352,31 +338,30 @@ tail -f deploy/logs/*.log
 
 ---
 
-# 📜 License
+# Related Work
+Listed below are friendly links to relevant agents works from OPPO PersonalAI Lab:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- [Flash-Searcher](https://github.com/OPPO-PersonalAI/Flash-Searcher): Fast and Effective Web Agents via DAG-Based Parallel Execution
+- [Agent Foundation Models](https://github.com/OPPO-PersonalAI/Agent_Foundation_Models): Chain-of-Agents: End-to-End Agent Foundation Models via Multi-Agent Distillation and Agentic RL
+- [TaskCraft](https://github.com/OPPO-PersonalAI/TaskCraft): Automated Generation of Agentic Tasks
+- [OAgents](https://github.com/OPPO-PersonalAI/OAgents): An Empirical Study of Building Effective Agents
+- [Agent-KB](https://github.com/OPPO-PersonalAI/Agent-KB): Leveraging Cross-Domain Experience for Agentic Problem Solving
+- [MiCoTA](https://github.com/OPPO-PersonalAI/MiCoTA): Bridging the Learnability Gap with Intermediate CoT and Teacher Assistants
 
----
+# Acknowledgement
 
-# 🤝 Contributing
+We would like to express our sincere gratitude to the original authors and contributors of LLaMA-Factory and verl, an excellent open-source project that provided a solid foundation for our work. Our implementation has been adapted from the [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) and [verl](https://github.com/volcengine/verl).
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Citation
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+If you find A<sup>2</sup>FM useful in your research or applications, we would appreciate it if you could cite our work:
 
----
-
-# 📧 Contact
-
-For questions and support, please open an issue on GitHub.
-
----
-
-<div align="center">
-  <sub>Built with ❤️ for the research community</sub>
-</div>
+```bibtex
+@article{chen2025textsuperscript,
+  title={A$\backslash$textsuperscript $\{$2$\}$ FM: An Adaptive Agent Foundation Model for Tool-Aware Hybrid Reasoning},
+  author={Chen, Qianben and Cao, Jingyi and Zhang, Jiayu and Qin, Tianrui and Li, Xiaowan and Zhu, King and Shi, Dingfeng and Zhu, He and Liu, Minghao and Liang, Xiaobo and others},
+  journal={arXiv preprint arXiv:2510.12838},
+  year={2025}
+}
+```
 
