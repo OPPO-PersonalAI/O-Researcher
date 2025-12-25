@@ -142,7 +142,7 @@ bash deploy/deploy.sh stop
 | `MODEL_BASE_PORT` | Base port for model service | `9095` |
 | `DEPLOY_HOST` | Deployment host address | `0.0.0.0` |
 | `DEPLOY_INSTANCES` | Number of instances | `1` |
-| `DEPLOY_GPUS_PER_INSTANCE` | GPUs per instance | `2` |
+| `DEPLOY_GPUS_PER_INSTANCE` | GPUs per instance | `4` |
 | `DEPLOY_MAX_MODEL_LEN` | Maximum model length | `131072` |
 | `DEPLOY_LOG_DIR` | Deployment log directory | `deploy/logs` |
 | `DEPLOY_WAIT_TIMEOUT` | Startup timeout (seconds) | `120` |
@@ -354,14 +354,14 @@ We would like to express our sincere gratitude to the original authors and contr
 
 ## Citation
 
-If you find A<sup>2</sup>FM useful in your research or applications, we would appreciate it if you could cite our work:
+If you find O-Researcher useful in your research or applications, we would appreciate it if you could cite our work:
 
 ```bibtex
-@article{chen2025textsuperscript,
-  title={A$\backslash$textsuperscript $\{$2$\}$ FM: An Adaptive Agent Foundation Model for Tool-Aware Hybrid Reasoning},
-  author={Chen, Qianben and Cao, Jingyi and Zhang, Jiayu and Qin, Tianrui and Li, Xiaowan and Zhu, King and Shi, Dingfeng and Zhu, He and Liu, Minghao and Liang, Xiaobo and others},
-  journal={arXiv preprint arXiv:2510.12838},
-  year={2025}
+@article{
+  title={},
+  author={},
+  journal={},
+  year={}
 }
 ```
 
