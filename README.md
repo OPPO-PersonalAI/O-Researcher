@@ -95,7 +95,7 @@ vim .env
 | `SERPAPI_BASE_URL` | Serper API URL | `https://google.serper.dev/search` |
 | `SUMMARY_API_URLS` | Summarization API URL (multiple separated by `\|`) | `https://api.openai.com/v1` |
 | `SUMMARY_OPENAI_API_KEY` | OpenAI API Key for summarization | `sk-xxx` |
-| `SUMMARY_MODEL` | Summarization model name | `gpt-4` |
+| `SUMMARY_MODEL` | Summarization model name | `gpt-5-mini` |
 | `JINA_API_KEY` | Jina API Key (optional) | `jina_xxx` |
 
 ## 4. Start Tool Servers
