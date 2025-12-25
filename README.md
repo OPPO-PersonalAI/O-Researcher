@@ -19,7 +19,7 @@
 This is the official repository for our paper "O-Researcher: An Open Ended Deep Research Model via Multi-Agent Distillation and Agentic RL".By integrating web search, page crawling, and intelligent summarization, it delivers accurate and traceable research results.
 
 <div align="center">
-  <img src="./assets/architecture.png" width="90%" height="auto" alt="O-Researcher Architecture"/>
+  <img src="./assets/O-Researcher.png" width="90%" height="auto" alt="O-Researcher Architecture"/>
 </div>
 
 ---
