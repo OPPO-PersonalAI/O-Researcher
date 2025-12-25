@@ -1,12 +1,12 @@
-# 日志文件
+# log files
 server/logs/
 deploy/logs/
 
-# PID 文件
+# PID files
 server/pids/
 deploy/pids/
 
-# cache文件
+# cache files
 server/cache/
 
 # Python
