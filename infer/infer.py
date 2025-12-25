@@ -70,11 +70,11 @@ url_list = [url.strip() for url in MODEL_URL.split("|") if url.strip()]
 URL_CONFIG = {
     "config": url_list,
     "pointer": 0,
-    "lock": Lock(),  # 线程安全的轮询
+    "lock": Lock(),  # Thread-safe round-robin
 }
 
 def get_next_url():
-    """轮询获取下一个 URL（线程安全）"""
+    """Get next URL using round-robin (thread-safe)"""
     with URL_CONFIG["lock"]:
         url = URL_CONFIG["config"][URL_CONFIG["pointer"] % len(URL_CONFIG["config"])]
         URL_CONFIG["pointer"] += 1
@@ -144,7 +144,7 @@ def parse_args_and_create_config():
                         help="Input JSON/JSONL file path")
     parser.add_argument("--output_file", type=str, required=True,
                         help="Output JSONL file path")
-    parser.add_argument("--q_key", type=str, default="question",
+    parser.add_argument("--q_key", type=str, default="prompt",
                         help="Key name for question field in input data")
     parser.add_argument("--a_key", type=str, default="answer",
                         help="Key name for answer field in input data")
@@ -171,7 +171,6 @@ def parse_args_and_create_config():
 
 
 def get_search_results_with_format(task, response, history, **kwargs):
-    # 声明全局变量
     global summary_input, summary_output, web_search_config, crawl_page_config
     global wiki_search_config, summary_model_config
     
@@ -180,37 +179,35 @@ def get_search_results_with_format(task, response, history, **kwargs):
         search_results = ""
         remote_tool = kwargs.get("remote_tool", True)
         
-        # 获取配置信息
         cur_web_search_config = web_search_config["config"][
             web_search_config["pointer"] % len(web_search_config["config"])]
         cur_crawl_page_config = crawl_page_config["config"][
             crawl_page_config["pointer"] % len(crawl_page_config["config"])]
 
-        # 更新配置指针
         web_search_config["pointer"] += 1
         crawl_page_config["pointer"] += 1
 
         if tool == '</web_search>':
-            # 处理web搜索，支持多个查询
+            # Handle web search, supports multiple queries
             queries = parsed_content['queries']
             num = parsed_content['num']
 
             web_results = RemoteWebSearchTool(
                 cur_web_search_config[0],
                 task=task,
-                query="|".join(queries),  # 合并多个查询
+                query="|".join(queries),
                 history=history,
-                topk=num  # 使用提取的num参数
+                topk=num
             )
             search_results = web_results
 
         elif tool == "</crawl_page>":
-            # 处理页面爬取，支持多个URL
+            # Handle page crawling, supports multiple URLs
             urls = parsed_content['urls']
             crawl_results = RemoteCrawlPageTool(
                 crawl_page_url=cur_crawl_page_config[0],
                 task=task,
-                urls=urls,  # 传递URL列表
+                urls=urls,
                 history=history
             )
             search_results = crawl_results
@@ -239,7 +236,6 @@ def api_client(system, prompt, current_answer, url, key, model, stop_words=None,
             model=model,
             messages=[
                 {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
-                # {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": f"user\n\n{system}\n\n{prompt}"},
                 {"role": "assistant", "content": current_answer}
             ],
@@ -274,19 +270,19 @@ def process_single_data(query, fixed_url, **kwargs):
 
     while step < max_steps and error_count < 10:
         step_list = [elem["type"] for elem in result_list]
-        # 检查是否有连续15个重复步骤
+        # Check for 15 consecutive duplicate steps
         if len(result_list) >= 15:
             for step in range(14, len(result_list)):
                 if len(set(item["type"] for item in result_list[-15:]))==1:
-                    return result_list, f"special_bad_case: 连续15次重复步骤: {step_list}"
-        logging.info(f"开始调用模型: {MODEL}")
+                    return result_list, f"special_bad_case: 15 consecutive duplicate steps: {step_list}"
+        logging.info(f"Calling model: {MODEL}")
         time.sleep(random.random() * 0.1)
 
         item_type, content = api_client(system_prompt, query, current_answer, fixed_url, KEY, MODEL, **kwargs)
-        logging.info(f"调用模型完毕: {MODEL}")
+        logging.info(f"Model call completed: {MODEL}")
         content_wo_think = content.split("</think>")[-1].strip()
         logging.info(f"Step {step+1}/{max_steps}: {item_type}")
-        # if item_type == "error" or " budget " in content.lower() or " 404 " in content.lower() or " 402 " in content.lower():
+
         if item_type == "error" or content is None:
             error_count += 1
             continue
@@ -323,13 +319,13 @@ def process_single_data(query, fixed_url, **kwargs):
             step += 1
             return current_answer, result_list, None
         elif item_type in ["web_search", "wiki_search", "crawl_page"]:
-            logging.info(f"开始调用工具: {item_type}")
+            logging.info(f"Calling tool: {item_type}")
             current_answer_with_current_content = current_answer + content
             is_success, obs = get_search_results_with_format(query, content, current_answer_with_current_content, **kwargs)
-            logging.info(f"工具调用完毕: {item_type}")
-            # if " budget " in obs.lower() or " 404 " in obs.lower() or " 402 " in obs.lower() or "An error occurred:" in obs.lower():
+            logging.info(f"Tool call completed: {item_type}")
+
             if not is_success or obs is None or "BudgetExceededError" in obs or "An error occurred:" in obs or "400 Bad Request" in obs:
-                logging.warning(f"使用工具{item_type}时发生了调用错误: {obs}")
+                logging.warning(f"Tool {item_type} call error: {obs}")
                 error_count += 1
                 continue
             result_list.append({
@@ -338,7 +334,7 @@ def process_single_data(query, fixed_url, **kwargs):
             })
             current_answer += f"\n\n{content.strip()}\n\n<observation>\n{obs.strip()}\n</observation>"
             step += 1
-    # 直接用suggested_answer作为answer
+    # Use suggested_answer as answer directly
     suggested_answer_list = [item for item in result_list if item["type"] == "suggested_answer"]
     if suggested_answer_list:
         result_list.append({
@@ -347,47 +343,45 @@ def process_single_data(query, fixed_url, **kwargs):
         })
         return current_answer, result_list, None
     else:
-        return current_answer, result_list, f"超出最大步数({max_steps})，未找到 suggested_answer"
+        return current_answer, result_list, f"Exceeded max steps ({max_steps}), suggested_answer not found"
 
 
-# 提取最后的答案
+# Extract final answer
 def extract_prediction_final_simple(content: str) -> str:
     """
-    严格按照顺序，依次尝试两种方法来提取答案。
-    1. 优先匹配完美的 <suggested_answer>xxx</suggested_answer> 格式。
-    2. 如果失败，则尝试匹配以 </suggested_answer> 结尾的格式。
-    3. 如果都失败，则抛出 ValueError。
+    Extract answer using two methods in order:
+    1. First try to match perfect <suggested_answer>xxx</suggested_answer> format.
+    2. If failed, try to match content ending with </suggested_answer>.
+    3. If both fail, raise ValueError.
     """
-    # Plan A: 尝试完美匹配
+    # Plan A: Try perfect match
     perfect_match = re.search(r'<suggested_answer>(.*?)</suggested_answer>', content, re.DOTALL)
     if perfect_match:
         return perfect_match.group(1).strip()
 
-    # --- Plan B: 如果 Plan A 失败，执行您指定的简单后备方案 ---
+    # Plan B: If Plan A fails, use simple fallback
     end_tag = "</suggested_answer>"
     if end_tag in content:
-        # 直接以结束标签为界，获取它之前的所有内容
+        # Get all content before the end tag
         potential_answer = content.split(end_tag)[0]
         cleaned_answer = potential_answer.strip()
         
-        # 只要清理后不是空字符串，就返回
+        # Return if cleaned answer is not empty
         if cleaned_answer:
             return cleaned_answer
 
-    # --- Plan C: 如果 Plan A 和 Plan B 都失败了 ---
-    raise ValueError("无法在内容中找到 </suggested_answer> 标签。")
+    # Plan C: If both Plan A and Plan B fail
+    raise ValueError("Cannot find </suggested_answer> tag in content.")
 
 
 def process_queries(infile, outfile, q_key, a_key, **kwargs):
-    # 读取输入数据
     if infile.endswith(".json"):
         questions_data = read_json(infile)
     elif infile.endswith(".jsonl"):
         questions_data = read_jsonl(infile)
     else:
-        raise ValueError(f"不支持的文件格式: {infile}")
+        raise ValueError(f"Unsupported file format: {infile}")
 
-    # 检查输出文件是否存在并去重
     out_data = []
     out_set = set()
     if os.path.exists(outfile):
@@ -398,24 +392,22 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
 
     logging.info(outfile)
     new_questions_data = [item for item in questions_data if item[q_key] not in out_set]
-    logging.info(f"初始数据: {len(questions_data)}, 过滤后数据：{len(new_questions_data)}")
+    logging.info(f"Initial data: {len(questions_data)}, After filtering: {len(new_questions_data)}")
     questions_data = new_questions_data
 
-    # 初始化统计信息和共享队列
     stats = {"total": len(new_questions_data), "success": 0, "failed": 0}
     task_queue = Queue()
     result_queue = Queue()
     write_lock = Lock()
 
-    # 生产者函数 - 将任务放入队列
+    # Producer function - put tasks into queue
     def producer():
         for idx, question_data in enumerate(questions_data):
             task_queue.put((idx, question_data))
-        # 放入结束标记
         for _ in range(kwargs.get("parallel", 4)):
             task_queue.put(None)
 
-    # 消费者函数 - 从队列获取任务并处理
+    # Consumer function - get tasks from queue and process
     def consumer():
         nonlocal stats
         while True:
@@ -427,7 +419,7 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
             question = question_data[q_key]
             level = question_data.get('Level', '-1')
             
-            # 每个 query 轮询选择一个 URL（同一 query 的所有 step 使用同一 URL，保证 kv_cache）
+            # Round-robin select URL for each query (same URL for all steps of a query to maintain kv_cache)
             fixed_url = get_next_url()
 
             trace = {
@@ -439,14 +431,13 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
                 "steps": [],
                 "status": None,
                 "error": None,
-                "elapsed_time_seconds": None,  # 单条推理耗时（秒）
-                "elapsed_time_formatted": None,  # 格式化耗时
-                "model_url": fixed_url,  # 记录使用的实例
+                "elapsed_time_seconds": None,
+                "elapsed_time_formatted": None,
+                "model_url": fixed_url,
             }
 
             current_answer, result_list, failed_reason = process_single_data(question, fixed_url=fixed_url, **kwargs)
 
-            # 先设置为None
             clean_data = None
 
             if failed_reason:
@@ -454,7 +445,7 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
                 trace["error"] = failed_reason
             elif "BudgetExceededError" in str(result_list):
                 trace["status"] = "error"
-                trace["error"] = "检测到特殊词汇，属于工具调用问题"
+                trace["error"] = "Detected special keywords, tool call issue"
             else:
                 trace["steps"] = result_list
                 if result_list[-1]["type"] == "suggested_answer":
@@ -466,8 +457,8 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
                             "prompt": task[1]["prompt"],
                             "article": prediction,
                             "current_answer": current_answer,
-                            "elapsed_time_seconds": trace["elapsed_time_seconds"],  # 耗时（秒）
-                            "elapsed_time_formatted": trace["elapsed_time_formatted"],  # 格式化耗时
+                            "elapsed_time_seconds": trace["elapsed_time_seconds"],
+                            "elapsed_time_formatted": trace["elapsed_time_formatted"],
                         }
                         trace["prediction"] = clean_data
                     except Exception as e:
@@ -476,63 +467,56 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
             result_queue.put((clean_data, trace))
             task_queue.task_done()
     
-    # 结果写入函数
+    # Result writer function
     def result_writer():
         nonlocal stats
         while True:
             result_item = result_queue.get()
-            if result_item is None:  # 结束标记
+            if result_item is None:
                 break
             
             result, trace = result_item
-            # 只有当 prediction 不为 None 时才处理
+
             if trace.get("prediction") is not None:
                 if result is not None:
                     stats["success"] += 1
                 else:
                     stats["failed"] += 1
                 
-                # 写入文件
                 with write_lock:
                     write_jsonl([result], outfile, "a")
             else:
-                # prediction 为 None 的情况不计入统计
-                logging.info(f"跳过写入: prediction 为 None (问题: {trace.get('question')})")
+                logging.info(f"Skip writing: prediction is None (question: {trace.get('question')})")
             
             result_queue.task_done()
 
-    # 创建线程池
+    # Create thread pool
     num_workers = kwargs.get("parallel", 4)
     with ThreadPoolExecutor(max_workers=num_workers + 1) as executor:
-        # 启动生产者线程
         executor.submit(producer)
         
-        # 启动消费者线程
         consumer_futures = [executor.submit(consumer) for _ in range(num_workers)]
-        
-        # 启动结果写入线程
+
         writer_future = executor.submit(result_writer)
-        
-        # 等待所有任务完成
+
         for future in as_completed(consumer_futures):
             future.result()
         
-        # 所有消费者完成后，发送结束信号给写入线程
         result_queue.put(None)
         writer_future.result()
 
-    logging.info(f"处理完成! 成功: {stats['success']}, 失败: {stats['failed']}, 总计: {len(new_questions_data)}")
+    logging.info(f"Processing completed! Success: {stats['success']}, Failed: {stats['failed']}, Total: {len(new_questions_data)}")
     return outfile, stats
 
 def main():
     # Parse command line arguments and create configuration
     args, INFER_KWARGS = parse_args_and_create_config()
 
-    # Create show kwargs for display
+    # Create show kwargs for display (use url list only, Lock is not serializable)
     SHOW_KWARGS = {
         "key": KEY,
         "model": MODEL,
-        "url_config": URL_CONFIG,
+        "url_config": URL_CONFIG["config"],
         "system_prompt": SYSTEM_PROMPT,
         **INFER_KWARGS
     }
@@ -560,7 +544,6 @@ def main():
     
     for current_round in range(total_rounds):
         if total_rounds > 1:
-            # 多轮时，为每轮生成不同的输出文件名
             current_outfile = args.output_file.replace(".jsonl", f".round_{current_round + 1}.jsonl")
             logging.info(f"\n{'=' * 50}")
             logging.info(f"Round {current_round + 1}/{total_rounds}")
@@ -589,7 +572,6 @@ def main():
     logging.info(f"All rounds completed!")
     logging.info(f"Total time: {total_cost_time:.2f} seconds")
     
-    # 汇总统计
     if total_rounds > 1:
         logging.info(f"Output files:")
         for outfile in all_outfiles:
@@ -612,121 +594,4 @@ def main():
     logging.info(f"Stats saved to: {stats_file}")
 
 if __name__ == "__main__":
-    # cur_web_search_config = "http://10.77.227.97:20001/search"
-    # task = '收集整理目前中国9阶层实际收入和财务状况，特别研究得出中国的中产有哪些特点，实际中产人数，财力等等'
-    # queries = ['CFPS 家庭金融 资产 负债 调查 ', ' 中国居民家庭收支调查 资产 负债 NBS ', ' China Household Finance Survey 资产 负债 ', ' China Household Income Project 财务 资产 ', ' PBoC 住户部门 资产负债表 报告']
-    # history = """<subtask_list>
-    # - 在中国9阶层实际收入和财务状况框架下，哪些指标、调查数据源与方法可可靠界定中产的财务结构与资产构成（含房产、金融资产、债务、家庭规模）？
-    # - 中国的中产阶层在中国9阶层实际收入和财务状况体系中呈现出哪些行为与消费模式特点（如负债、投资、教育、养老准备、地域差异）？
-    # - 在中国9阶层实际收入和财务状况的背景下，中产阶层的人数规模、地域分布与变动趋势是什么（基于人口比例、地区、城市化与家庭规模的差异）？
-    # - 基于中国9阶层实际收入和财务状况的系统划分，中产阶层的收入范围、财务指标与典型画像有哪些（含税前/税后收入、家庭可支配收入、支出结构）？
-    # - 目前中国的9阶层实际收入与财务状况如何定义与划分，这一框架的来源、指标与应用范围是什么？
-    # </subtask_list>
-
-    # </subtask_list>
-
-    # <subtask>
-    # 在中国9阶层实际收入和财务状况框架下，哪些指标、调查数据源与方法可可靠界定中产的财务结构与资产构成（含房产、金融资产、债务、家庭规模）？
-    # </subtask>
-
-    # <think>
-    # We need a concise, high-level plan to define indicators, identify reliable survey data sources, and choose methods to delineate middle-class financial structure under the 9-tier framework in China. The plan should balance theoretical clarity (asset structure components), data quality (nationally representative, longitudinal, harmonized), and methodological rigor (measurement, imputation, classification). We'll leverage web search to locate authoritative datasets and papers (China Family Panel Studies, CFPS; China Household Finance Survey, CHFS; CHIP; Urban and Rural Household Income and Expenditure Surveys; PBoC Financial Stability Reports; CEIC/NBS; GFSA/SAFE for FX debt). Given tool constraints, we prioritize core queries in batches of at most two keywords per search, then crawl primary dataset pages. We will synthesize indicators and methods, map them to the 9-tier income bands, and outline validation and robustness checks. Deliverables include a reference-backed indicator set, data dictionary, codebook, and reproducible code.
-    # </think>
-
-    # <plan>
-    # High-level plan:
-
-    # 1) Clarify scope and 9-tier framework
-    # - Define the 9-tier income classification in China (e.g., decile-based or income band thresholds) and the middle-class target (e.g., 4th–6th deciles). Confirm if urban/rural or regional adjustments are needed.
-    # - Enumerate required financial structure dimensions: housing (owned, mortgaged, value), financial assets (cash, deposits, bank wealth, mutual funds, stocks, bonds, insurance, trusts), non-financial assets (vehicles, durable goods), debt (mortgage, consumer, education, informal), and family structure (size, lifecycle stage, hukou).
-
-    # 2) Build the indicator dictionary
-    # - Income and classification: household disposable income, per capita income, equivalized income (OECD-modified), income volatility.
-    # - Asset structure: total net worth, housing wealth share, financial wealth share, liquid assets share, risky asset share, wealth-to-income ratio.
-    # - Debt structure: total liabilities, mortgage balance and LTV, consumer debt (credit cards, personal loans), debt-to-income, debt-service-to-income, financial leverage (liabilities/net worth).
-    # - Family context: household size, presence of children/elders, urban vs rural, region, hukou status, lifecycle stage (age of head), education.
-
-    # 3) Identify and vet data sources
-    # - Priority national surveys with asset/debt modules: CFPS (China Family Panel Studies), CHFS (China Household Finance Survey), CHIP (China Household Income Project), Urban/Rural Household Income and Expenditure Surveys, CGSS with wealth modules.
-    # - Administrative/aggregate sources for validation: NBS Statistical Yearbooks, PBoC Financial Stability Report (household balance sheet), CEIC, SAFE/GFSA (external debt), regulators’ bank loan data (mortgage volume), MOHURD/real estate yearbooks for housing prices.
-    # - Foreign comparators for methodological guidance: SEDS/SCF (US), HFCS (Euro), SHIW (Italy), HSE (UK).
-    # - Use web_search in batches (max two keywords per query) to locate official dataset pages, documentation, and key papers on middle-class measurement in China; then use crawl_page on 3–5 primary URLs (CFPS, CHFS, CHIP, NBS, PBoC).
-
-    # 4) Data harmonization and preprocessing
-    # - Select a primary dataset (e.g., CFPS for broad coverage, CHFS for detailed balance sheets), with secondary datasets for cross-validation.
-    # - Map variables to the indicator dictionary; construct derived metrics (e.g., equivalized income, net worth, debt ratios).
-    # - Handle missing values via multiple imputation (e.g., MICE), and document imputation models per module (income, assets, debt).
-    # - Address underreporting of assets/income using calibration (e.g., raking to external totals from NBS/PBoC) and top-coding adjustment; document sensitivity.
-
-    # 5) Classify middle class within the 9-tier framework
-    # - Assign households to 9 tiers based on equivalized disposable income within urban/rural and regional strata; consider harmonized CPI adjustments for purchasing power.
-    # - Define middle class as a contiguous set of tiers (e.g., 4th–6th deciles) and report sensitivity to alternative definitions (tertiles, thresholds vs percentiles).
-
-    # 6) Measure financial structure and asset composition
-    # - Construct distributions of asset/debt indicators by tier: mean, median, interdecile ranges, Lorenz curves, wealth-to-income elasticities.
-    # - Decompose net worth by component (housing, financial, non-financial) and by risk class (liquid vs illiquid; risky vs safe assets).
-    # - Examine heterogeneity by family size, lifecycle, hukou, region; report elasticities and partial correlations.
-
-    # 7) Methodological robustness checks
-    # - Compare income tiers across CFPS vs CHFS; reconcile discrepancies via reweighting and variable mapping.
-    # - Sensitivity to income concept (market vs disposable), equivalence scales, and price deflators.
-    # - Validate asset aggregates against PBoC/NBS totals; ensure mortgage balances align with banking statistics.
-    # - Triangulate debt metrics with PBoC household debt/GDP and loan composition data.
-
-    # 8) Deliverables and reproducibility
-    # - Produce: indicator dictionary; data dictionary/codebook; sample classification rules for 9 tiers; replication code (version-controlled) for cleaning, imputation, classification, and analysis; reference-backed report with citations.
-    # - Document assumptions, definitions, and limitations; include a quality scorecard per data source (coverage, asset/debt granularity, frequency, sampling).
-
-    # 9) Timeline and roles
-    # - Week 1: Framework definition, indicator dictionary, search and source vetting.
-    # - Week 2: Data acquisition (public extracts), preprocessing, imputation models.
-    # - Week 3: Classification and measurement, robustness checks, validation against external aggregates.
-    # - Week 4: Synthesis, write-up with references, deliverables packaging.
-    # - Roles: Lead economist (framework/interpretation), Data engineer (ETL/harmonization), Quant analyst (imputation/methods), Research assistant (search/citations).
-
-    # 10) Risk management
-    # - If key modules are missing (e.g., CHFS not publicly available), pivot to CFPS with asset imputation using donor matching and microsimulation, with clear disclosure.
-    # - Ensure ethical compliance and data use restrictions; use aggregate validation only where necessary to protect microdata integrity.
-    # </plan>
-
-    # <think>
-    # Task analysis: The user asks, in Chinese, for indicators, survey data sources, and methods that reliably delineate middle-class financial structure and asset composition (including housing, financial assets, debt, and family size) within China's 9-tier income/wealth framework. This requires identifying authoritative datasets (e.g., CFPS, CHFS, CHIP), methodological papers on middle-class measurement in China, and guidance on equivalence scales and debt/income metrics, as well as administrative aggregates (PBoC, NBS) for validation. Tool matching: Among the available tools, web_search is appropriate to discover and retrieve candidate sources; crawl_page can be used subsequently to extract details from selected URLs. suggested_answer should not be used immediately, as the instruction explicitly asks not to choose it after the plan and to first perform analysis using tools. Parameter check: web_search requires 'query' (3–5 orthogonal queries separated by '|') and 'num' (integer). I will craft 5 orthogonal Chinese queries covering datasets (CFPS/CHFS/CHIP), middle-class measurement frameworks, and validation sources (PBoC/NBS). I will set num to 10 to retrieve sufficient breadth without redundancy. This avoids repeating any prior identical parameters since no previous tool call was made.
-    # </think>
-
-    # <web_search>query=CFPS 家庭金融 资产 负债 调查 | 中国居民家庭收支调查 资产 负债 NBS | China Household Finance Survey 资产 负债 | China Household Income Project 财务 资产 | PBoC 住户部门 资产负债表 报告&num=10</web_search>"""
-
-    # num = 10
-
-    # web_results = RemoteWebSearchTool(
-    #                 cur_web_search_config,
-    #                 task=task,
-    #                 query="|".join(queries),  # 合并多个查询
-    #                 history=history,
-    #                 topk=num  # 使用提取的num参数
-    #             )
-
-    # print(web_results)
-
     main()
-
-
-
-# if __name__ == "__main__":
-#     for key, value in SHOW_KWARGS.items():
-#         logging.info(f">>>> {key}: {value}")
-
-#     infile="/home/notebook/code/group/eason/AFM_module/deep_research_bench/data/prompt_data/query_five.jsonl"
-#     outfile = f"/home/notebook/code/group/eason/AFM_module/infer/afm_infer_data/1205_swift_72B_zh_sft_80k_rl_step3_five_{MODEL}.summary_model_{summary_model_config['model_id']}.remote_tool_{INFER_KWARGS['remote_tool']}.jsonl"
-
-#     q_key = "prompt"
-#     a_key = "answer"
-
-#     # 设置并行线程数
-#     start_time = time.time()
-#     all_outfiles = []
-#     for current_round in range(INFER_KWARGS["round"]):
-#         current_outfile = outfile.replace(".jsonl", f".round_{current_round}.jsonl")
-#         all_outfiles.append(current_outfile)
-#         process_queries(infile, current_outfile, q_key, a_key, **INFER_KWARGS)
-#     cost_time = time.time() - start_time
-#     print(f"时间花费: {cost_time}")
