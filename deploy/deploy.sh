@@ -218,7 +218,6 @@ elif [[ "$cmd" == "stop" ]]; then
         rm -f "$PID_DIR/${base_modelname}_inst${i}.pid"
     done
     
-    # 等待进程完全终止
     echo ""
     echo "Waiting for processes to terminate..."
     sleep 30
@@ -231,7 +230,6 @@ elif [[ "$cmd" == "stop" ]]; then
         port=$((base_port + i))
         if check_port_listening "$port"; then
             echo "  Warning: Port $port still in use, retrying..."
-            # 再次尝试清理
             fuser -k -9 ${port}/tcp 2>/dev/null
             sleep 2
             if check_port_listening "$port"; then

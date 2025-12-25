@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-快速测试 CrawlPage 服务器
-
-使用方法：
-python test_crawl_page_simple.py <endpoint_url>
-e.g. python test_crawl_page_simple.py http://127.0.0.1:20001/crawl_page
-"""
-
 import argparse
 import json
 import os
@@ -16,11 +8,10 @@ import requests
 
 from dotenv import load_dotenv
 
-# 创建参数解析器
 parser = argparse.ArgumentParser(description='Crawl page test script.')
-parser.add_argument('endpoint_url', type=str, help='The endpoint URL to test against (e.g., http://127.0.0.1:20001/crawl_page)')
+parser.add_argument('endpoint_url', type=str, help='The endpoint URL to test against (e.g., http://127.0.0.1:20002/crawl_page)')
 
-# 解析命令行参数
+# Parse command line arguments
 args = parser.parse_args()
 
 
@@ -40,44 +31,43 @@ for data in all_data:
     print(f"Testing Summary think_content: {data.get('think_content')}")
     print("="*20)
     try:
-        # 发送请求
+        # Send request
         url = args.endpoint_url
-        # url = "http://10.77.226.105:30001/crawl_page"
         response = requests.post(
             url,
             json=data,
             headers={"Content-Type": "application/json"}
         )
         
-        # 检查HTTP状态码
+        # Check HTTP status code
         response.raise_for_status()
         
         try:
             result = response.json()
         except json.JSONDecodeError as e:
-            print(f"JSON解析错误: {e}")
-            print(f"Response content: {response.text}")  # Print first 500 chars of response
+            print(f"JSON parse error: {e}")
+            print(f"Response content: {response.text}")
             continue
 
-        # 输出结果
+        # Output result
         if result.get("success"):
-            print("成功!")
-            print(f"处理时间: {result.get('processing_time'):.1f}秒")
-            print("\n结果:")
+            print("Success!")
+            print(f"Processing time: {result.get('processing_time'):.1f}s")
+            print("\nResult:")
             print("-" * 50)
             print(result.get('obs'))
             print("-" * 50)
         else:
-            print(f"失败: {result.get('error_message', '未知错误')}")
+            print(f"Failed: {result.get('error_message', 'Unknown error')}")
             
     except requests.exceptions.ConnectionError:
-        print("连接错误: 无法连接到服务器，请确保服务器正在运行")
-        break # Stop testing if connection fails
+        print("Connection error: Cannot connect to server, please ensure server is running")
+        break
     except requests.exceptions.Timeout:
-        print("超时错误: 请求超时")
+        print("Timeout error: Request timed out")
     except requests.exceptions.RequestException as e:
-        print(f"请求错误: {str(e)}")
+        print(f"Request error: {str(e)}")
     except Exception as e:
-        print(f"未知错误: {str(e)}")
+        print(f"Unknown error: {str(e)}")
 
-print("\n所有测试完成")
+print("\nAll tests completed")

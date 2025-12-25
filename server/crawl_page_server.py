@@ -24,16 +24,16 @@ load_dotenv(override=True)
 import json
 from dataclasses import dataclass
 
-# ============ API配置函数 ============
+# ============ API Configuration Functions ============
 def get_summary_api() -> dict:
     """
-    从环境变量获取随机的 Summary API 配置
-    环境变量格式：
-    - SUMMARY_API_URLS: 多个URL用|分隔，随机选择一个
-    - SUMMARY_API_KEYS: 多个KEY用|分隔，随机选择一个
-    - SUMMARY_API_MODELS: 多个模型名用|分隔，随机选择一个（可选，默认gpt-5-mini）
+    Get random Summary API configuration from environment variables.
+    Environment variable format:
+    - SUMMARY_API_URLS: Multiple URLs separated by |, randomly select one
+    - SUMMARY_API_KEYS: Multiple KEYs separated by |, randomly select one
+    - SUMMARY_API_MODELS: Multiple model names separated by | (optional, default gpt-5-mini)
     
-    注意：URL、KEY、MODEL 会独立随机选择，不需要一一对应
+    Note: URL, KEY, MODEL are independently randomly selected, no need to correspond
     """
     import random
     
@@ -54,7 +54,6 @@ def get_summary_api() -> dict:
     if not models:
         models = ["gpt-5-mini"]
     
-    # 从各自的池中随机选择，实现灵活的负载均衡
     selected_url = random.choice(urls)
     selected_key = random.choice(keys)
     selected_model = random.choice(models)
@@ -65,7 +64,6 @@ def get_summary_api() -> dict:
         "model": selected_model
     }
 
-# 配置日志
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
@@ -77,11 +75,10 @@ CRAWL_PAGE_TIMEOUT = 1000
 
 class CrawlPageRequest(BaseModel):
     urls: List[str] = Field(..., description="List of URLs to crawl")
-    think_content: str = Field(..., description="思考内容，用于指导总结, 或者基于 think_content 生成 click_intent")
+    think_content: str = Field(..., description="Think content for guiding summary or generating click_intent")
     web_search_query: str = Field(..., description="Web search query")
 
 class CrawlPageResponse(BaseModel):
-    """响应模型"""
     success: bool
     obs: str
     error_message: Optional[str] = None
@@ -101,21 +98,18 @@ class CrawlPageServer:
         logger.info(f"CrawlPageServer initialized with jina_timeout={self.jina_timeout}s, summary_timeout={self.summary_timeout}s, token_budget={self.jina_token_budget}")
     
     def _select_api_key_random(self):
-        """使用随机策略选择一个API Key"""
         return random.randint(0, len(self.api_key_list) - 1)
 
     def _select_api_key_with_round_robin(self, api_key_index):
-        """使用轮询策略选择API Key"""
         return (api_key_index + 1) % len(self.api_key_list)
     
     async def _fetch_with_api(self, session: aiohttp.ClientSession, url: str, base_delay: float = 1.0, max_delay: float = 16.0) -> Tuple[str, str]:
         """
-        对单个 URL 做使用api轮询抓取。
-        每次请求超时 = timeout 秒。
-        成功立即返回 (content, url)；全部失败返回 (error_msg, url)。
+        Fetch single URL using API round-robin.
+        Request timeout = timeout seconds.
+        Return (content, url) on success; (error_msg, url) on all failures.
         """
         
-        # 使用负载均衡选择一个API Key
         api_key_index = self._select_api_key_random()
         logger.info(f"Choosing api_key: {self.api_key_list[api_key_index]}")
         try_times = 0
@@ -129,11 +123,9 @@ class CrawlPageServer:
             logger.warning(f"API Key with ending {self.api_key_list[api_key_index][-5:]} failed, trying alternatives")
 
             if try_times == len(self.api_key_list):
-                # 没有其他可用的API Key
                 logger.warning(f"API Key with ending {self.api_key_list[api_key_index][-5:]} failed, no alternatives left")
                 raise first_error
             
-            # 尝试剩余的API Keys
             last_error = first_error
             while try_times < len(self.api_key_list):
                 try:
@@ -149,15 +141,14 @@ class CrawlPageServer:
                     logger.warning(f"API Key with ending {self.api_key_list[api_key_index][-5:]} failed, trying alternatives")
                     last_error = e
             else:
-                # 所有API Keys都失败
                 raise last_error
         return results
 
     async def _fetch_with_retry(self, session: aiohttp.ClientSession, url: str, base_delay: float = 1.0, max_delay: float = 16.0, apikey: str = '') -> Tuple[str, str]:
         """
-        对单个 URL 做最多 self.max_retries 次抓取。
-        每次请求超时 = timeout 秒。
-        成功立即返回 (content, url)；全部失败返回 (error_msg, url)。
+        Fetch single URL with up to self.max_retries attempts.
+        Request timeout = timeout seconds.
+        Return (content, url) on success; (error_msg, url) on all failures.
         """
         assert apikey != "", "No api key when fetching."
         attempt = 0
@@ -201,7 +192,6 @@ class CrawlPageServer:
 
 
     def validate_urls(self, urls: List[str]) -> List[str]:
-        """Validate HTTP/HTTPS URLs."""
         processed_urls = []
         for url in urls:
             url = url.strip()
@@ -214,7 +204,6 @@ class CrawlPageServer:
         return processed_urls
 
     def get_summary_prompt(self, web_search_query: str, think_content: str, page_contents: str) -> str:
-        """构建网页总结提示"""
         prompt = f"""
         Target: Extract all content from a web page that matches a specific web search query and search query, ensuring completeness and relevance. (No response/analysis required.)
         
@@ -243,7 +232,6 @@ class CrawlPageServer:
         return prompt
 
     async def call_ai_api_async(self, system_prompt: str, user_prompt: str, max_retries: int = 5, base_delay: float = 60) -> str:
-        """异步调用AI API，支持重试机制"""
         selected_summary_api = get_summary_api()
         api_url, api_key, model = selected_summary_api["url"], selected_summary_api["key"], selected_summary_api["model"]
         logger.info(f"Calling AI API with model: {model}, API URL: {api_url}, max_retries: {max_retries}")
@@ -262,7 +250,7 @@ class CrawlPageServer:
                         {"role": "user", "content": user_prompt},
                     ],
                     extra_headers={
-                        'X-DashScope-DataInspection':'{"input":"disable","output":"disable"}'  # 关键参数(接口输入和输出的信息是否通过滤网过滤)
+                        'X-DashScope-DataInspection':'{"input":"disable","output":"disable"}'
                     },
                     stream=False,
                     timeout=self.summary_timeout
@@ -272,15 +260,15 @@ class CrawlPageServer:
                 return content
             except Exception as e:
                 last_error = str(e)
-                logger.warning(f"[Attempt {attempt}] AI API调用失败: {last_error}, API_KEY: {api_key}, API_URL: {api_url}")
+                logger.warning(f"[Attempt {attempt}] AI API call failed: {last_error}, API_KEY: {api_key}, API_URL: {api_url}")
                 if attempt < max_retries:
                     delay = base_delay * (2 ** (attempt - 1)) # 60s -> 120s -> 240s -> 480s
-                    logger.info(f"等待 {delay:.2f}s 后重试...")
+                    logger.info(f"Waiting {delay:.2f}s before retry...")
                     await asyncio.sleep(delay)
                 else:
-                    logger.error("所有重试次数已用完，AI API调用失败。")
+                    logger.error("All retries exhausted, AI API call failed.")
 
-        return f"AI处理失败（重试{max_retries}次后）: {last_error}"
+        return f"AI processing failed (after {max_retries} retries): {last_error}"
         
     async def summarize_content(self, content: str, request: CrawlPageRequest) -> str:
         """Helper function to summarize content"""
@@ -296,25 +284,22 @@ class CrawlPageServer:
     async def process_crawl_page(self, request: CrawlPageRequest) -> CrawlPageResponse:
         start_time = time.time()
         try:
-            # 直接使用传入的参数
-            logger.info("--------- 开始处理crawl_page请求 ---------")
+            logger.info("--------- Processing crawl_page request ---------")
             logger.info(f"Processing {len(request.urls)} URLs: {request.urls}")
             logger.info(f"web_search_query='{request.web_search_query}'")
             
-            # 验证和清理URL列表
             urls = self.validate_urls(request.urls)
             if not urls:
                 logger.warning("No valid URLs found after validation")
                 return CrawlPageResponse(
                     success=False,
                     obs="",
-                    error_message="没有找到有效的URL",
+                    error_message="No valid URLs found",
                     processing_time=time.time() - start_time
                 )
             
-            logger.info(f"开始处理{len(urls)}个URL: {urls}")
+            logger.info(f"Processing {len(urls)} URLs: {urls}")
             
-            # 异步获取页面内容
             page_contents = ""
             logger.info("Creating aiohttp session for page fetching")
             async with aiohttp.ClientSession() as session:
@@ -331,18 +316,15 @@ class CrawlPageServer:
                         processed_results.append(result)
                 page_results = processed_results
 
-            ##### 结束 Jina read page #####
             logger.info(f"Page fetching completed after {time.time() - start_time} seconds")
             
-            ##### 开始 page summary #####
-            # Single summarization of all content
             logger.info("Using 'once' strategy - single summarization of all content")
             page_contents = "\n\n".join(f"Page {i+1} [{result[1]}]: {result[0]}" for i, result in enumerate(page_results))
             logger.info(f"Combined content for summarization: {len(page_contents)} chars")
             summary_result = await self.summarize_content(page_contents, request)
             processing_time = time.time() - start_time
             logger.info(f"crawl page done, cost time: {processing_time:.2f} seconds, result length: {len(summary_result)} chars")
-            logger.info("--------- 请求处理成功 ---------")
+            logger.info("--------- Request processed successfully ---------")
             
             return CrawlPageResponse(
                 success=True,
@@ -353,7 +335,7 @@ class CrawlPageServer:
         except Exception as e:
             processing_time = time.time() - start_time
             logger.error(f"crawl page error: {str(e)}", exc_info=True)
-            logger.error("--------- 请求处理失败 ---------")
+            logger.error("--------- Request processing failed ---------")
             return CrawlPageResponse(
                 success=False,
                 obs="",
@@ -362,26 +344,21 @@ class CrawlPageServer:
             )
 
 
-# 创建服务器实例
 crawl_server = CrawlPageServer()
 
-# 创建FastAPI应用
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时的初始化
-    logger.info("CrawlPage服务器启动")
+    logger.info("CrawlPage server started")
     yield
-    # 关闭时的清理
-    logger.info("CrawlPage服务器关闭")
+    logger.info("CrawlPage server stopped")
 
 app = FastAPI(
-    title="CrawlPage工具服务器",
-    description="基于FastAPI的crawl_page工具服务，支持高并发和容错",
+    title="CrawlPage Tool Server",
+    description="FastAPI-based crawl_page tool service with high concurrency and fault tolerance",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# 添加CORS中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -393,29 +370,22 @@ app.add_middleware(
 
 @app.post("/crawl_page", response_model=CrawlPageResponse)
 async def crawl_page_endpoint(request: CrawlPageRequest):
+    """
+    CrawlPage tool API endpoint
+    
+    Args:
+        - urls: List[str] - Required, list of URLs to crawl
+        - think_content: str - Required, think content for guiding summary or generating click_intent
+        - web_search_query: str - Required, WebSearch query
+
+    Returns:
+        response: CrawlPageResponse with fields:
+        - success: bool - Whether successful
+        - obs: str - AI summary
+        - processing_time: float - Processing time
+        - error_message: Optional[str] - Error message (if failed)
+    """
     logger.info(f"Received crawl_page request from client")
-    """
-    CrawlPage工具接口
-    
-    参数：
-    # 参数
-    - urls: List[str] - 必须, 要爬取的URL列表
-    - think_content: str - 必须, 思考内容，用于指导总结, 或者基于 think_content 生成 click_intent
-    - web_search_query: str - 必须, WebSearch query
-
-    # API KEY
-    - api_url: str - 必须, AI API URL
-    - api_key: str - 必须, AI API Key
-    - model: str - 必须, AI 模型
-    
-
-    返回值:
-    response: CrawlPageResponse, 包含四个字段
-    - success: bool - 是否成功
-    - obs: str - AI总结
-    - processing_time: float - 处理时间
-    - error_message: Optional[str] - 错误信息（如果失败）
-    """
     try:
         result = await asyncio.wait_for(
             crawl_server.process_crawl_page(request),
@@ -425,15 +395,14 @@ async def crawl_page_endpoint(request: CrawlPageRequest):
         return result
     except asyncio.TimeoutError:
         logger.error(f"Request timeout after {CRAWL_PAGE_TIMEOUT}s")
-        raise HTTPException(status_code=504, detail=f"请求超时: {CRAWL_PAGE_TIMEOUT}秒")
+        raise HTTPException(status_code=504, detail=f"Request timeout: {CRAWL_PAGE_TIMEOUT}s")
     except Exception as e:
-        logger.error(f"接口处理异常: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
+        logger.error(f"Endpoint processing error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @app.get("/health")
 async def health_check():
-    """健康检查接口"""
     logger.info("Health check requested")
     return {"status": "healthy", "timestamp": time.time()}
 
@@ -441,7 +410,7 @@ async def health_check():
 @app.get("/")
 async def root():
     return {
-        "message": "CrawlPage工具服务器",
+        "message": "CrawlPage Tool Server",
         "version": "1.0.0",
         "endpoints": {
             "crawl_page": "/crawl_page",
@@ -452,46 +421,39 @@ async def root():
 
 
 if __name__ == "__main__":
-    # 从环境变量获取配置
     host = os.getenv("SERVER_HOST", "0.0.0.0")
     port = os.getenv("CRAWL_PAGE_PORT", "20001")
     is_debug = os.getenv("DEBUG", "false").lower() == "true"
 
     if port is None:
-        raise RuntimeError("[ERROR] CRAWL_PAGE_PORT 环境变量未设置!")
+        raise RuntimeError("[ERROR] CRAWL_PAGE_PORT environment variable not set!")
     
     port = int(port)
 
-    # 判断是否为debug模式
     if is_debug:
-        # --- 调试模式配置 ---
-        print("crawl_page以【调试模式】启动，等待调试器附加...")
+        print("crawl_page starting in [DEBUG MODE], waiting for debugger to attach...")
 
         import debugpy
         debugpy.listen(("0.0.0.0", 9527))
         
-        # 暂停脚本，直到调试客户端(VS code)连接上来
         debugpy.wait_for_client()
-        print("调试器已成功附加！")
+        print("Debugger attached successfully!")
 
-        # 调试模式：单进程，支持热重载
-        logger.info(f"[调试模式] 启动CrawlPage服务器... http://{host}:{port}")
+        logger.info(f"[DEBUG MODE] Starting CrawlPage server... http://{host}:{port}")
         uvicorn.run(
-            app,  # 直接传递 app 对象
+            app,
             host=host,
             port=port,
             reload=True,
             log_level="debug"
         )
     else:
-        # 生产模式：提示使用命令行启动
-        logger.info(f"[开发模式] 启动CrawlPage服务器... http://{host}:{port}")
-        logger.info("单进程模式，适用于开发调试")
-        logger.info(f"生产环境请使用: uvicorn crawl_page_server_v4:app --host {host} --port {port} --workers N")
+        logger.info(f"[DEV MODE] Starting CrawlPage server... http://{host}:{port}")
+        logger.info("Single process mode, suitable for development")
+        logger.info(f"For production use: uvicorn crawl_page_server_v4:app --host {host} --port {port} --workers N")
         
-        # 使用字符串引用 app，支持热重载
         uvicorn.run(
-            "crawl_page_server_v4:app",  # 修改：使用字符串引用（假设文件名为 crawl_page_server_v4.py）
+            "crawl_page_server_v4:app",
             host=host,
             port=port,
             reload=False,

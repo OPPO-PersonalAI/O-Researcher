@@ -4,11 +4,11 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$DIR")"
 source "$PROJECT_ROOT/.env"
 echo $PROJECT_ROOT
-: "${SERVER_HOST:?请在 .env 中设置 SERVER_HOST}"
-: "${CRAWL_PAGE_PORT:?请在 .env 中设置 CRAWL_PAGE_PORT}"
-: "${WEBSEARCH_PORT:?请在 .env 中设置 WEBSEARCH_PORT}"
+: "${SERVER_HOST:?Please set SERVER_HOST in .env}"
+: "${CRAWL_PAGE_PORT:?Please set CRAWL_PAGE_PORT in .env}"
+: "${WEBSEARCH_PORT:?Please set WEBSEARCH_PORT in .env}"
 
-# 配置 workers 数量
+# Configure worker count
 CRAWL_PAGE_WORKERS=${CRAWL_PAGE_WORKERS:-10}
 WEBSEARCH_WORKERS=${WEBSEARCH_WORKERS:-10} 
 
@@ -17,62 +17,62 @@ PID_DIR="$DIR/pids/$SERVER_HOST";   mkdir -p "$PID_DIR"
 
 cmd=$1
 if [[ ! "$cmd" =~ ^(start|stop|status|test)$ ]]; then
-  echo "用法: $0 [start|stop|status|test]"
+  echo "Usage: $0 [start|stop|status|test]"
   exit 1
 fi
 
 # =============================================================================
-# 辅助函数：停止服务及其所有子进程
+# Helper function: Stop service and all child processes
 # =============================================================================
 stop_service_with_children() {
   local name=$1 pidf=$2 port=$3
-  echo "正在停止 ${name}..."
+  echo "Stopping ${name}..."
   
-  # 1. 通过 PID 文件停止进程组
+  # 1. Stop process group via PID file
   if [[ -f "$pidf" ]]; then
     local pid=$(cat "$pidf" 2>/dev/null)
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-      # 获取真正的进程组 ID
+      # Get actual process group ID
       local pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
       if [[ -n "$pgid" ]] && [[ "$pgid" != "0" ]]; then
         kill -TERM -"$pgid" 2>/dev/null
       else
         kill -TERM "$pid" 2>/dev/null
       fi
-      # 等待进程结束
+      # Wait for process to end
       for i in {1..5}; do
         kill -0 "$pid" 2>/dev/null || break
         sleep 1
       done
-      # 超时强杀
+      # Force kill on timeout
       if kill -0 "$pid" 2>/dev/null; then
         [[ -n "$pgid" ]] && kill -9 -"$pgid" 2>/dev/null
         kill -9 "$pid" 2>/dev/null
       fi
-      echo "${name} 已停止 (PID $pid)"
+      echo "${name} stopped (PID $pid)"
     fi
     rm -f "$pidf"
   fi
   
-  # 2. 强制清理端口上的所有进程
+  # 2. Force cleanup all processes on port
   sleep 1
   local pids=$(lsof -t -i:"$port" 2>/dev/null)
   if [[ -n "$pids" ]]; then
-    echo "  清理端口 $port 上的残留进程: $pids"
+    echo "  Cleaning remaining processes on port $port: $pids"
     echo "$pids" | xargs kill -9 2>/dev/null
     sleep 1
   fi
   
-  # 检查最终状态
+  # Check final status
   if ! lsof -i:"$port" &>/dev/null; then
-    echo "${name} 端口 $port 已释放"
+    echo "${name} port $port released"
   else
-    echo "端口 $port 仍被占用，请手动检查: lsof -i:$port"
+    echo "Port $port still in use, check manually: lsof -i:$port"
   fi
 }
 
 # =============================================================================
-# 辅助函数：检查服务状态
+# Helper function: Check service status
 # =============================================================================
 check_service_status() {
   local service_name=$1
@@ -82,34 +82,34 @@ check_service_status() {
   
   if [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf")" 2>/dev/null; then
     main_pid=$(cat "$pidf")
-    echo "${service_name} 运行中 (主进程 PID: $main_pid)"
+    echo "${service_name} running (main PID: $main_pid)"
     
-    # 查找所有子进程
+    # Find all child processes
     child_pids=($(pgrep -P "$main_pid" 2>/dev/null))
     if [[ ${#child_pids[@]} -gt 0 ]]; then
-      echo "   └─ Worker 进程数: ${#child_pids[@]} (预期: $workers)"
+      echo "   └─ Worker count: ${#child_pids[@]} (expected: $workers)"
       echo "   └─ Worker PIDs: ${child_pids[*]}"
     else
-      echo "   └─ 单进程模式 (未检测到 worker 子进程)"
+      echo "   └─ Single process mode (no worker child processes detected)"
     fi
     
-    # 显示端口监听情况
+    # Show port listening status
     local port_count=$(lsof -t -i:"$port" 2>/dev/null | wc -l)
-    echo "   └─ 端口 $port 监听进程数: $port_count"
+    echo "   └─ Port $port listening processes: $port_count"
     
-    # 显示内存使用
+    # Show memory usage
     local mem_usage=$(ps -o rss= -p "$main_pid" 2>/dev/null)
     if [[ -n "$mem_usage" ]]; then
       mem_mb=$((mem_usage / 1024))
-      echo "   └─ 内存使用: ${mem_mb} MB"
+      echo "   └─ Memory usage: ${mem_mb} MB"
     fi
     
   elif lsof -i:"$port" &>/dev/null; then
-    echo "${service_name} 端口 $port 被占用，但 PID 文件无效或进程异常"
-    echo "   占用端口的进程:"
+    echo "${service_name} port $port in use, but PID file invalid or process abnormal"
+    echo "   Processes using port:"
     lsof -i:"$port" 2>/dev/null | grep LISTEN
   else
-    echo "${service_name} 未运行, 且端口 $port 未被占用"
+    echo "${service_name} not running, port $port not in use"
   fi
 }
 
@@ -122,9 +122,9 @@ if [[ "$cmd" == "start" ]]; then
   pidf="$PID_DIR/${SERVER_HOST}_CrawlPage_$CRAWL_PAGE_PORT.pid"
   logf="$LOG_DIR/CrawlPage_$CRAWL_PAGE_PORT.log"
   if [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf")" 2>/dev/null; then
-    echo "CrawlPage 已在运行 (PID $(cat "$pidf"))"
+    echo "CrawlPage already running (PID $(cat "$pidf"))"
   else
-    echo "启动 CrawlPage 端口 $SERVER_HOST:$CRAWL_PAGE_PORT (Workers: $CRAWL_PAGE_WORKERS)..."
+    echo "Starting CrawlPage on $SERVER_HOST:$CRAWL_PAGE_PORT (Workers: $CRAWL_PAGE_WORKERS)..."
     nohup uvicorn crawl_page_server:app \
       --host "$SERVER_HOST" \
       --port "$CRAWL_PAGE_PORT" \
@@ -134,26 +134,26 @@ if [[ "$cmd" == "start" ]]; then
       --app-dir "$DIR" \
       > "$logf" 2>&1 &
     echo $! > "$pidf"
-    # 使用健康检查验证启动（最多 15 秒）
+    # Use health check to verify startup (max 15 seconds)
     started=0
     for i in {1..15}; do
       if curl -s --connect-timeout 1 "http://$SERVER_HOST:$CRAWL_PAGE_PORT/health" &>/dev/null; then
-        echo "CrawlPage 启动成功 (PID: $(cat "$pidf"), 地址: $SERVER_HOST:$CRAWL_PAGE_PORT)"
+        echo "CrawlPage started successfully (PID: $(cat "$pidf"), address: $SERVER_HOST:$CRAWL_PAGE_PORT)"
         started=1
         break
       fi
       sleep 1
     done
-    [[ $started -eq 0 ]] && echo "CrawlPage 启动失败，请查看日志: $logf" && tail -3 "$logf"
+    [[ $started -eq 0 ]] && echo "CrawlPage startup failed, check log: $logf" && tail -3 "$logf"
   fi
 
   # WebSearch
   pidf="$PID_DIR/${SERVER_HOST}_WebSearch_$WEBSEARCH_PORT.pid"
   logf="$LOG_DIR/WebSearch_$WEBSEARCH_PORT.log"
   if [[ -f "$pidf" ]] && kill -0 "$(cat "$pidf")" 2>/dev/null; then
-    echo "WebSearch 已在运行 (PID $(cat "$pidf"))"
+    echo "WebSearch already running (PID $(cat "$pidf"))"
   else
-    echo "启动 WebSearch 端口 $SERVER_HOST:$WEBSEARCH_PORT (Workers: $WEBSEARCH_WORKERS)..."
+    echo "Starting WebSearch on $SERVER_HOST:$WEBSEARCH_PORT (Workers: $WEBSEARCH_WORKERS)..."
     nohup uvicorn cache_serper_server:app \
       --host "$SERVER_HOST" \
       --port "$WEBSEARCH_PORT" \
@@ -163,48 +163,48 @@ if [[ "$cmd" == "start" ]]; then
       --app-dir "$DIR" \
       > "$logf" 2>&1 &
     echo $! > "$pidf"
-    # 使用健康检查验证启动（最多 15 秒）
+    # Use health check to verify startup (max 15 seconds)
     started=0
     for i in {1..15}; do
       if curl -s --connect-timeout 1 "http://$SERVER_HOST:$WEBSEARCH_PORT/health" &>/dev/null; then
-        echo "WebSearch 启动成功 (PID: $(cat "$pidf"), 地址: $SERVER_HOST:$WEBSEARCH_PORT)"
+        echo "WebSearch started successfully (PID: $(cat "$pidf"), address: $SERVER_HOST:$WEBSEARCH_PORT)"
         started=1
         break
       fi
       sleep 1
     done
-    [[ $started -eq 0 ]] && echo "WebSearch 启动失败，请查看日志: $logf" && tail -3 "$logf"
+    [[ $started -eq 0 ]] && echo "WebSearch startup failed, check log: $logf" && tail -3 "$logf"
   fi
 
-  # 等待服务启动
+  # Wait for services to start
   echo ""
-  echo "等待服务启动..."
+  echo "Waiting for services to start..."
   sleep 3
-  echo "所有服务启动完成！"
+  echo "All services started!"
   echo ""
-  echo "查看状态: $0 status"
-  echo "查看日志: tail -f $LOG_DIR/*.log"
+  echo "Check status: $0 status"
+  echo "View logs: tail -f $LOG_DIR/*.log"
 
 # ---------------------------------------------
 #                test
 # ---------------------------------------------
 elif [[ "$cmd" == "test" ]]; then
-  echo "--------------------开始测试 web search ------------------"
+  echo "-------------------- Testing web search ------------------"
   python -u "$DIR/test_cache_serper_server.py" \
           "http://$SERVER_HOST:$WEBSEARCH_PORT/search"
-  echo "-------------------------测试结束--------------------------"
+  echo "------------------------- Test done --------------------------"
   
-  echo "--------------------开始测试 crawl page -------------------"
+  echo "-------------------- Testing crawl page -------------------"
   python -u "$DIR/test_crawl_page_simple.py" \
           "http://$SERVER_HOST:$CRAWL_PAGE_PORT/crawl_page"
-  echo "-------------------------测试结束--------------------------"
+  echo "------------------------- Test done --------------------------"
 
 
 # ---------------------------------------------
 #                stop
 # ---------------------------------------------
 elif [[ "$cmd" == "stop" ]]; then
-  echo "正在停止所有服务及其子进程..."
+  echo "Stopping all services and child processes..."
   echo ""
 
   # CrawlPage
@@ -218,14 +218,14 @@ elif [[ "$cmd" == "stop" ]]; then
     "$WEBSEARCH_PORT"
   
   echo ""
-  echo "所有服务已停止"
+  echo "All services stopped"
 
 # =============================================================================
 #                               STATUS
 # =============================================================================
 else
   echo "=========================================="
-  echo "          服务状态检查"
+  echo "          Service Status Check"
   echo "=========================================="
   
   check_service_status "CrawlPage" \
