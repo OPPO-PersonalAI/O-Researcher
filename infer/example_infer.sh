@@ -2,9 +2,18 @@
 echo "O-Researcher Inference Examples"
 echo "================================"
 
+# Get script directory (works from any location)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$DIR")"
 ENV_FILE="$PROJECT_ROOT/.env"
+
+# Define paths
+INFER_SCRIPT="$DIR/infer.py"
+DATA_DIR="$PROJECT_ROOT/data"
+RESULTS_DIR="$PROJECT_ROOT/results"
+
+# Create results directory if not exists
+mkdir -p "$RESULTS_DIR"
 
 [[ -f "$ENV_FILE" ]] || { echo "Error: Config file not found: $ENV_FILE"; exit 1; }
 source "$ENV_FILE"
@@ -15,23 +24,28 @@ echo "  MODEL_URL: $MODEL_URL"
 echo "  WEBSEARCH_URL: $WEBSEARCH_URL"
 echo "  CRAWL_PAGE_URL: $CRAWL_PAGE_URL"
 echo ""
+echo "Paths:"
+echo "  Script: $INFER_SCRIPT"
+echo "  Data: $DATA_DIR"
+echo "  Results: $RESULTS_DIR"
+echo ""
 
 # =============================================================================
 # Example 1: Basic inference with default parameters
 # =============================================================================
 echo "Example 1: Basic inference"
-python infer.py \
-    --input_file ../data/example.json \
-    --output_file ../results/output.jsonl
+python "$INFER_SCRIPT" \
+    --input_file "$DATA_DIR/example.jsonl" \
+    --output_file "$RESULTS_DIR/output.jsonl"
 
 # # =============================================================================
 # # Example 2: Custom q_key and a_key
 # # =============================================================================
 # echo ""
 # echo "Example 2: Custom input/output keys"
-# python infer.py \
-#     --input_file ../data/queries.jsonl \
-#     --output_file ../results/output.jsonl \
+# python "$INFER_SCRIPT" \
+#     --input_file "$DATA_DIR/example.jsonl" \
+#     --output_file "$RESULTS_DIR/output.jsonl" \
 #     --q_key "prompt" \
 #     --a_key "answer"
 
@@ -40,9 +54,9 @@ python infer.py \
 # # =============================================================================
 # echo ""
 # echo "Example 3: Parallel processing (30 workers)"
-# python infer.py \
-#     --input_file ../data/example.json \
-#     --output_file ../results/parallel_output.jsonl \
+# python "$INFER_SCRIPT" \
+#     --input_file "$DATA_DIR/example.jsonl" \
+#     --output_file "$RESULTS_DIR/parallel_output.jsonl" \
 #     --parallel 30
 
 # # =============================================================================
@@ -50,9 +64,9 @@ python infer.py \
 # # =============================================================================
 # echo ""
 # echo "Example 4: Multiple rounds (3 rounds)"
-# python infer.py \
-#     --input_file ../data/example.json \
-#     --output_file ../results/multi_round.jsonl \
+# python "$INFER_SCRIPT" \
+#     --input_file "$DATA_DIR/example.jsonl" \
+#     --output_file "$RESULTS_DIR/multi_round.jsonl" \
 #     --round 3
 
 # # =============================================================================
@@ -60,9 +74,9 @@ python infer.py \
 # # =============================================================================
 # echo ""
 # echo "Example 5: Full parameters"
-# python infer.py \
-#     --input_file ../data/example.json \
-#     --output_file ../results/full_output.jsonl \
+# python "$INFER_SCRIPT" \
+#     --input_file "$DATA_DIR/example.jsonl" \
+#     --output_file "$RESULTS_DIR/full_output.jsonl" \
 #     --q_key "question" \
 #     --a_key "answer" \
 #     --temperature 1.0 \
@@ -76,7 +90,7 @@ python infer.py \
 echo ""
 echo "================================"
 echo "All examples completed!"
-echo "Output files are in: ../results/"
+echo "Output files are in: $RESULTS_DIR"
 echo ""
 echo "Available parameters:"
 echo "  --input_file      : Input JSON/JSONL file (required)"
