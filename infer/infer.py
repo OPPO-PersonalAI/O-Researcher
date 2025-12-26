@@ -477,15 +477,12 @@ def process_queries(infile, outfile, q_key, a_key, **kwargs):
             
             result, trace = result_item
 
-            if trace.get("prediction") is not None:
-                if result is not None:
-                    stats["success"] += 1
-                else:
-                    stats["failed"] += 1
-                
+            if trace.get("prediction") is not None and result is not None:
+                stats["success"] += 1                
                 with write_lock:
                     write_jsonl([result], outfile, "a")
             else:
+                stats["failed"] += 1
                 logging.info(f"Skip writing: prediction is None (question: {trace.get('question')})")
             
             result_queue.task_done()
