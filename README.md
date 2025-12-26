@@ -352,16 +352,3 @@ Listed below are friendly links to relevant agents works from OPPO PersonalAI La
 
 We would like to express our sincere gratitude to the original authors and contributors of LLaMA-Factory and verl, an excellent open-source project that provided a solid foundation for our work. Our implementation has been adapted from the [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) and [verl](https://github.com/volcengine/verl).
 
-## Citation
-
-If you find O-Researcher useful in your research or applications, we would appreciate it if you could cite our work:
-
-```bibtex
-@article{
-  title={},
-  author={},
-  journal={},
-  year={}
-}
-```
-

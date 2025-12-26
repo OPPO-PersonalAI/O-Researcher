@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from huggingface_hub import snapshot_download
 
 # you can change to our other models in "https://huggingface.co/PersonalAILab/models"
