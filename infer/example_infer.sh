@@ -82,7 +82,8 @@ python "$INFER_SCRIPT" \
 # python "$INFER_SCRIPT" \
 #     --input_file "$DATA_DIR/example.jsonl" \
 #     --output_file "$RESULTS_DIR/multi_round.jsonl" \
-#     --round 3
+#     --round 3 \
+#     --parallel 30
 
 # # =============================================================================
 # # Example 5: Full parameters
@@ -92,7 +93,7 @@ python "$INFER_SCRIPT" \
 # python "$INFER_SCRIPT" \
 #     --input_file "$DATA_DIR/example.jsonl" \
 #     --output_file "$RESULTS_DIR/full_output.jsonl" \
-#     --q_key "question" \
+#     --q_key "prompt" \
 #     --a_key "answer" \
 #     --temperature 1.0 \
 #     --top_p 0.9 \
