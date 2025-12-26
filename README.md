@@ -201,7 +201,7 @@ bash example_infer.sh  # Automatically sources .env
 | `--temperature` | Generation temperature | `1.0` |
 | `--top_p` | Top-p sampling | `0.9` |
 | `--max_tokens` | Max tokens per generation | `4096` |
-| `--total_tokens` | Max total tokens | `81920` |
+| `--total_tokens` | Max total tokens | `131072` |
 | `--max_steps` | Max inference steps per question | `100` |
 | `--parallel` | Number of parallel workers | `1` |
 | `--round` | Number of inference rounds | `1` |

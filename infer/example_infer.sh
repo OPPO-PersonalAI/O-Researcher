@@ -97,7 +97,7 @@ python "$INFER_SCRIPT" \
 #     --temperature 1.0 \
 #     --top_p 0.9 \
 #     --max_tokens 4096 \
-#     --total_tokens 81920 \
+#     --total_tokens 131072 \
 #     --max_steps 100 \
 #     --parallel 30 \
 #     --round 1
@@ -115,7 +115,7 @@ echo "  --a_key           : Answer field key (default: answer)"
 echo "  --temperature     : Generation temperature (default: 1.0)"
 echo "  --top_p           : Top-p sampling (default: 0.9)"
 echo "  --max_tokens      : Max tokens per generation (default: 4096)"
-echo "  --total_tokens    : Max total tokens (default: 81920)"
+echo "  --total_tokens    : Max total tokens (default: 131072)"
 echo "  --max_steps       : Max inference steps per question (default: 100)"
 echo "  --parallel        : Parallel workers (default: 1)"
 echo "  --round           : Number of inference rounds (default: 1)"

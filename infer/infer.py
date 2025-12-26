@@ -124,7 +124,7 @@ def parse_args_and_create_config():
                         help="Frequency penalty (-2.0 to 2.0)")
     parser.add_argument("--max_tokens", type=int, default=4096,
                         help="Maximum tokens per generation")
-    parser.add_argument("--total_tokens", type=int, default=81920,
+    parser.add_argument("--total_tokens", type=int, default=131072,
                         help="Maximum total tokens for generation")
 
     # Tool Configuration
