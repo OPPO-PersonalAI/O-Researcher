@@ -9,8 +9,7 @@
 <div align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-green?logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/vLLM-Supported-orange?logo=lightning&logoColor=white" alt="vLLM">
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+  <img src='https://img.shields.io/badge/License-Apache%202.0-blue'></a>
 </div>
 
 <br>
