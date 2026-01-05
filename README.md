@@ -47,7 +47,7 @@ O-Researcher presents a unified framework that bridges the gap between closed-so
 
 ## 1. Install Dependencies
 
-First, install the required dependencies by executing the command below to install packages listed in requirements.txt:
+First, install the required dependencies by executing the command below to install packages listed in requirements.txt
 ```bash
 # Install Python dependencies
 pip install -r requirements.txt
