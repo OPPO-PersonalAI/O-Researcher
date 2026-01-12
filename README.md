@@ -8,8 +8,8 @@
 
 <div align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/FastAPI-0.100+-green?logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src='https://img.shields.io/badge/License-Apache%202.0-blue'></a>
+  <a href='https://arxiv.org/abs/2601.03743'><img src='https://img.shields.io/badge/Paper O Researcher-arXiv-44cc11?logo=arxiv&logoColor=white'></a>
+  <a href='https://huggingface.co/PersonalAILab/O-Researcher-72B-rl'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Models-Huggingface-yellow'></a>
 </div>
 
 <br>
@@ -58,7 +58,6 @@ You can directly download the model by following the links below.
 | Model | Download Links | Model Size | Context Length |
 | :-----------------: | :-----------------------------------------: | :----------: | :--------------: |
 | O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl)| 72B | 128K |
-| O-Researcher-72B-sft | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-sft)| 72B | 128K |
 
 **Alternative Download Methods:**
 
@@ -348,16 +347,10 @@ Listed below are friendly links to relevant agents works from OPPO PersonalAI La
 - [Agent-KB](https://github.com/OPPO-PersonalAI/Agent-KB): Leveraging Cross-Domain Experience for Agentic Problem Solving
 - [MiCoTA](https://github.com/OPPO-PersonalAI/MiCoTA): Bridging the Learnability Gap with Intermediate CoT and Teacher Assistants
 
-## Citation
-If you find `O-Researcher` useful in your research or applications, we would appreciate it if you could cite our work:
-```bibtex
-@misc{yao2026oresearcheranopenended,
-      title={O-Researcher: An Open Ended Deep Research Model via Multi-Agent Distillation and Agentic RL},
-      author={Yi Yao and He Zhu and Piaohong Wang and Jincheng Ren and Xinlong Yang and Qianben Chen and Xiaowan Li and Dingfeng Shi and Jiaxian Li and Qiexiang Wang and Sinuo Wang and Xinpeng Liu and Jiaqi Wu and Minghao Liu and Wangchunshu Zhou},
-      year={2026},
-      eprint={2601.03743},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2601.03743}
-}
-```
+# Star
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=OPPO-PersonalAI/O-Researcher&type=Date)](https://github.com/OPPO-PersonalAI/O-Researcher)
+
+</div>
