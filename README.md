@@ -68,7 +68,7 @@ You can directly download the model by following the links below.
    cd ./model
    python download.py
 
-## 3. Data Downloads
+## 3. Data Download
 The sft and rl datasets for O-Researcher, the download links are as below:
 You can directly download the model by following the links below.
 | Datasets | Download Links | Dataset Size | Max Context Length |
