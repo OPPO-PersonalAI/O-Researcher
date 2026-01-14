@@ -58,6 +58,7 @@ You can directly download the model by following the links below.
 | Model | Download Links | Model Size | Context Length |
 | :-----------------: | :-----------------------------------------: | :----------: | :--------------: |
 | O-Researcher-72B-rl | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-rl)| 72B | 128K |
+| O-Researcher-72B-sft | [🤗 HuggingFace](https://huggingface.co/PersonalAILab/O-Researcher-72B-sft)| 72B | 128K |
 
 **Alternative Download Methods:**
 
@@ -66,7 +67,16 @@ You can directly download the model by following the links below.
    ```bash
    cd ./model
    python download.py
-## 3. Configure Environment
+
+## 3. Data Downloads
+The sft and rl datasets for O-Researcher, the download links are as below:
+You can directly download the model by following the links below.
+| Datasets | Download Links | Dataset Size | Max Context Length |
+| :-----------------: | :-----------------------------------------: | :----------: | :--------------: |
+| O-Researcher-SFT-Dataset | [🤗 HuggingFace](https://huggingface.co/datasets/PersonalAILab/O-Researcher-SFT-Dataset)| 2.92k | 128K 
+| O-Researcher-RL-Dataset | [🤗 HuggingFace](https://huggingface.co/datasets/PersonalAILab/O-Researcher-RL-Dataset)| 10k | 128K
+
+## 4. Configure Environment
 
 ```bash
 # Copy the template and fill in your values
@@ -97,7 +107,7 @@ vim .env
 | `SUMMARY_MODEL` | Summarization model name | `gpt-5-mini` |
 | `JINA_API_KEY` | Jina API Key (optional) | `jina_xxx` |
 
-## 4. Start Tool Servers
+## 5. Start Tool Servers
 
 ```bash
 # Start all tool servers
@@ -117,7 +127,7 @@ bash server/start_servers.sh stop
 | **WebSearch** | `WEBSEARCH_PORT` | Multi-API Google search with intelligent caching |
 | **CrawlPage** | `CRAWL_PAGE_PORT` | Concurrent page crawling with AI summarization |
 
-## 5. Deploy Model Server
+## 6. Deploy Model Server
 
 Deploy the model using vLLM for high-performance inference:
 
@@ -167,7 +177,7 @@ Remember to update `MODEL_URL` accordingly:
 export MODEL_URL="http://localhost:9095/v1|http://localhost:9096/v1"
 ```
 
-## 6. Run Inference
+## 7. Run Inference
 
 Make sure `.env` is properly configured and sourced:
 
